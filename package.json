@@ -1,0 +1,30 @@
+{
+  "name": "zepp-ha-companion",
+  "version": "0.1.0",
+  "description": "Home Assistant companion app for Amazfit smartwatches running Zepp OS (target: Amazfit Balance 3)",
+  "main": "app.js",
+  "scripts": {
+    "dev": "zeus dev",
+    "preview": "zeus preview",
+    "build": "zeus build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Se7ven/Zepp-HA-Companion.git"
+  },
+  "keywords": [
+    "zepp-os",
+    "amazfit",
+    "home-assistant",
+    "smartwatch"
+  ],
+  "author": "Se7ven",
+  "license": "MIT",
+  "devDependencies": {
+    "@zeppos/device-types": "^4.0.0",
+    "@zeppos/zeus-cli": "^1.10.3"
+  },
+  "dependencies": {
+    "@zeppos/zml": "^0.0.38"
+  }
+}
