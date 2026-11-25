@@ -394,8 +394,12 @@ AppSideService(
       }
     },
 
-    onSettingsChange({ key }) {
+    onSettingsChange(evt) {
       try {
+        // native change events differ in shape across firmware: plain key string
+        // or an object like { key, value } / launchArgs — normalize defensively
+        const key = typeof evt === 'string' ? evt : (evt && (evt.key || evt.settingsKey)) || ''
+        logger.log('settingsChange', key, JSON.stringify(evt || ''))
         if (key === STORAGE_KEYS.HA_SYNC) {
           discover(this)
         } else if (key === STORAGE_KEYS.HA_CONFIG) {

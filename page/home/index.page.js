@@ -46,7 +46,8 @@ function radiusFor(shape, w, h) {
   return px(Math.min(w, h) / 2)
 }
 
-BasePage({
+Page(
+  BasePage({
   state: {
     hub: null,
     buttonWidgets: [], // [{ widget, cfg, on }]
@@ -482,4 +483,5 @@ BasePage({
     this.stopAutoRefresh()
     logger.log('home onDestroy')
   },
-})
+  })
+)

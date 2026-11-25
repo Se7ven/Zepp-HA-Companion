@@ -34,7 +34,8 @@ function domainLabel(domain) {
   return label.indexOf('domain_') === 0 ? domain : label
 }
 
-BasePage({
+Page(
+  BasePage({
   state: {
     areaId: '',
     areaName: '',
@@ -340,4 +341,5 @@ BasePage({
     this.stopAutoRefresh()
     logger.log('area onDestroy')
   },
-})
+  })
+)
