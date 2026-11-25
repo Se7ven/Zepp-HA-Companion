@@ -1,5 +1,0 @@
-msgid "os_info"
-msgstr "Сведения ОС"
-
-msgid "app_info"
-msgstr "О приложении"

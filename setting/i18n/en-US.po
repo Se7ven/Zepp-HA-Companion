@@ -1,0 +1,224 @@
+msgid "back"
+msgstr "Back"
+
+msgid "not_connected"
+msgstr "Not connected yet"
+
+msgid "status_error"
+msgstr "Connection error"
+
+msgid "status_ok"
+msgstr "Connected"
+
+msgid "areas"
+msgstr "Areas"
+
+msgid "entities"
+msgstr "Entities"
+
+msgid "connection"
+msgstr "Connection"
+
+msgid "connection_desc"
+msgstr "Home Assistant URL and a Long-Lived Access Token (Profile -> Security -> Long-Lived Access Tokens)"
+
+msgid "ha_url"
+msgstr "Home Assistant URL"
+
+msgid "ha_token"
+msgstr "Access token"
+
+msgid "sync"
+msgstr "Check & load entities"
+
+msgid "sync_hint"
+msgstr "Enter the URL and token, then press \"Check & load entities\"."
+
+msgid "main_screen"
+msgstr "Main screen (areas)"
+
+msgid "main_screen_desc"
+msgstr "Choose areas shown on the watch and the entities available there"
+
+msgid "configure"
+msgstr "Configure"
+
+msgid "widget_screens"
+msgstr "Widget screens (1-6)"
+
+msgid "widget_screens_desc"
+msgstr "Button screens on the watch, switched by swiping left/right"
+
+msgid "no_areas"
+msgstr "No areas found in Home Assistant (entities without an area are not listed)."
+
+msgid "enabled_entities"
+msgstr "Enabled entities"
+
+msgid "show_on_watch"
+msgstr "Show on the watch"
+
+msgid "entities_grouped"
+msgstr "entities grouped by type"
+
+msgid "no_entities"
+msgstr "No entities in this area"
+
+msgid "unnamed_button"
+msgstr "Unnamed button"
+
+msgid "edit"
+msgstr "Edit"
+
+msgid "delete"
+msgstr "Delete"
+
+msgid "add_button"
+msgstr "+ Add button"
+
+msgid "enabled"
+msgstr "Enabled"
+
+msgid "screen_name"
+msgstr "Screen name"
+
+msgid "button_settings"
+msgstr "Button settings"
+
+msgid "entity"
+msgstr "Entity"
+
+msgid "button_text"
+msgstr "Button text"
+
+msgid "action"
+msgstr "Action"
+
+msgid "shape"
+msgstr "Shape"
+
+msgid "size"
+msgstr "Size"
+
+msgid "slot"
+msgstr "Slot"
+
+msgid "color_on"
+msgstr "Color (on)"
+
+msgid "color_off"
+msgstr "Color (off)"
+
+msgid "save"
+msgstr "Save"
+
+msgid "Auto (toggle / fire)"
+msgstr "Auto (toggle / fire)"
+
+msgid "Run (fire / trigger)"
+msgstr "Run (fire / trigger)"
+
+msgid "Turn on"
+msgstr "Turn on"
+
+msgid "Turn off"
+msgstr "Turn off"
+
+msgid "Small (1 cell)"
+msgstr "Small (1 cell)"
+
+msgid "Wide (full row)"
+msgstr "Wide (full row)"
+
+msgid "Square"
+msgstr "Square"
+
+msgid "Rounded"
+msgstr "Rounded"
+
+msgid "Circle"
+msgstr "Circle"
+
+msgid "domain_light"
+msgstr "Lights"
+
+msgid "domain_switch"
+msgstr "Switches"
+
+msgid "domain_scene"
+msgstr "Scenes"
+
+msgid "domain_script"
+msgstr "Scripts"
+
+msgid "domain_automation"
+msgstr "Automations"
+
+msgid "domain_sensor"
+msgstr "Sensors"
+
+msgid "domain_binary_sensor"
+msgstr "Binary sensors"
+
+msgid "domain_cover"
+msgstr "Covers"
+
+msgid "domain_climate"
+msgstr "Climate"
+
+msgid "domain_lock"
+msgstr "Locks"
+
+msgid "domain_fan"
+msgstr "Fans"
+
+msgid "domain_media_player"
+msgstr "Media players"
+
+msgid "domain_vacuum"
+msgstr "Vacuums"
+
+msgid "domain_input_boolean"
+msgstr "Helpers (boolean)"
+
+msgid "domain_humidifier"
+msgstr "Humidifiers"
+
+msgid "domain_person"
+msgstr "People"
+
+msgid "domain_zone"
+msgstr "Zones"
+
+msgid "domain_group"
+msgstr "Groups"
+
+msgid "domain_weather"
+msgstr "Weather"
+
+msgid "domain_camera"
+msgstr "Cameras"
+
+msgid "domain_remote"
+msgstr "Remotes"
+
+msgid "domain_alarm_control_panel"
+msgstr "Alarms"
+
+msgid "domain_device_tracker"
+msgstr "Device trackers"
+
+msgid "domain_number"
+msgstr "Numbers"
+
+msgid "domain_select"
+msgstr "Select helpers"
+
+msgid "domain_button"
+msgstr "Buttons"
+
+msgid "domain_update"
+msgstr "Updates"
+
+msgid "domain_timer"
+msgstr "Timers"

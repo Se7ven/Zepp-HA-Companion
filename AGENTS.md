@@ -48,12 +48,24 @@ Docs in `docs/` are Apache-2.0 licensed (see `docs/.LICENSE.txt`), used locally 
   (`BasePage` → `this.request({ method, ... })` ↔ `BaseSideService.onRequest(req, res)`).
   It runs over the Bluetooth channel to the phone: the actual network request is performed by the
   phone via the Zepp/Zepp Health app.
-- **Setting** (`setting/`) — app settings UI in the phone (Zepp App → App Settings),
-  values arrive in `settingsStorage` (`ha_config`: `{ url, token }`). **Not created yet** —
-  add with `npx create-zos module setting`.
-- Home Assistant: REST (`GET /api/`, `GET /api/states`, `POST /api/services/...`) +
-  Long-Lived Access Token. A long-lived WebSocket from the watch is unreliable —
-  the skeleton uses REST polling; record the final decision in an ADR/docs after verification.
+- **Setting** (`setting/`) — full settings app inside the phone (Zepp App → App Settings):
+  connection (HA URL + token), entity discovery, area/entity enable toggles, and the widget-screen
+  button editor. It is a real JS mini-app (`setting/index.js`) with ambient components (`View`,
+  `Section`, `Toggle`, `Select`, `TextInput`, `Button`, ...); the view rebuilds on every
+  `settingsStorage` change. Navigation state lives in the `ha_ui` storage key.
+- **`settingsStorage` is phone-side only.** The side service reads/writes it via `settingsLib`
+  from `@zeppos/zml/base-side`; the watch sees it only through the side service. The phone pushes
+  changes to the watch with `onSettingsChange` → `this.call({ method })` → page `onCall`.
+- **Home Assistant:** REST polling only — Zepp OS exposes **no WebSocket client**, so the decision
+  is settled. Discovery (`app-side/index.js: discover()`) fetches entity ids+names from
+  `GET /api/states` and area membership from `GET /api/template` with a Jinja template
+  (`area_id()`/`area_name()`), because the HA area registry is not otherwise reachable.
+  The `/api/template` body is `text/plain` — do **not** JSON.parse it.
+- **Watch UI:** screens swipe horizontally via `setScrollMode(SCROLL_MODE_SWIPER_HORIZONTAL)`
+  with `VIEW_CONTAINER(page: i)` — max 7 containers per page (1 hub + 6 widget screens fits
+  exactly). `LIST_VIEW` requires `API_LEVEL` 5.0 and is **unavailable** (we target 4.0):
+  scrollable lists are built from `BUTTON` rows inside a `VIEW_CONTAINER(scroll_enable: 1)`.
+  Button state colors come from the settings (`colorOn`/`colorOff`).
 
 ## Commands
 
@@ -83,17 +95,24 @@ CI: GitHub Actions (`.github/workflows/`). `build.yml` builds the `.zab` and upl
 app.js                  # device entry point (App lifecycle)
 app.json                # mini-app config (appId, apiVersion, targets, i18n)
 page/
-  home/                 # home page (index.page.js + index.layout/)
+  home/                 # hub + 6 swipeable widget screens (index.page.js)
+  area/                 # entity list for one area, grouped by domain (index.page.js)
   i18n/                 # UI translations (en-US.po, ru-RU.po, zh-CN.po)
 app-side/
-  index.js              # network bridge to Home Assistant (fetch via phone)
-  i18n/
-setting/                # (TODO) HA settings in the phone app
-utils/config/constants.js  # storage keys, defaults
+  index.js              # HA REST bridge + discovery + settings sync (fetch via phone)
+setting/
+  index.js              # phone-side settings app (connection, areas, screens editor)
+  i18n/                 # settings UI translations (en-US.po, ru-RU.po)
+utils/
+  ha.js                 # HA helpers: service map, on/off state, id parsing
+  config/constants.js   # storage keys (STORAGE_KEYS), defaults, color palette
 assets/common.r|common.s   # resources per screen shape (r = round 480)
 docs/                   # OFFLINE COPY of Zepp OS docs, gitignored
 scripts/                # utility scripts
 ```
+
+Main data flow: settings app writes `ha_config`/`ha_sync` → side service `onSettingsChange` →
+`discover()` caches `ha_data` → watch requests `GET_HUB`/`GET_AREA`/`CALL` via zml.
 
 ## Conventions
 
@@ -107,13 +126,15 @@ scripts/                # utility scripts
 - Semantic versioning, kept in sync in `package.json` and `app.json` (`app.version.name`).
 - Documentation language policy: see section above — all docs in EN/RU/PL with cross-links.
 
-## Roadmap (skeleton)
+## Roadmap
 
-- [ ] `setting/` — Zepp App settings screen (HA URL + token) writing to `settingsStorage`
-- [ ] Home page → call `TEST_CONNECTION` / `GET_STATES` from `app-side/`
-- [ ] Favorite entities list + service toggling (light switch, etc.)
+- [x] `setting/` — Zepp App settings screen (HA URL + token) writing to `settingsStorage`
+- [x] Home page → call `GET_HUB` / `GET_AREA` / `CALL` from `app-side/`
+- [x] Entity list (areas → entities grouped by domain) with toggling
+- [x] 6 customizable widget screens (label, size, position, shape, per-state colors, action)
+- [x] Decide: REST polling (no WebSocket in Zepp OS); areas via `/api/template`
 - [ ] Caching and graceful degradation when HA is unreachable
-- [ ] Decide: REST polling vs WebSocket; update frequency vs battery
+- [ ] Update frequency vs battery (currently on-demand refresh only)
 - [ ] App icon, screenshots, catalog publishing
 
 ## Known Gotchas
@@ -121,5 +142,9 @@ scripts/                # utility scripts
 - Network exists only in app-side; from a page — only `this.request(...)` (zml).
 - `zeus preview` requires a developer-account login; `zeus build` does not (verified in CI).
 - `@zeppos/zml` is a runtime dependency, keep it in `dependencies` (not `devDependencies`).
+- zml transfers data in ~3.5 KB chunks — keep `GET_HUB`/`GET_AREA` payloads compact (filter
+  entity state attributes server-side).
+- `settingsStorage` is phone-only; in the side service use `settingsLib` (`@zeppos/zml/base-side`),
+  never import `@zos/settings` there.
 - `docs/` is a snapshot; before making API decisions, cross-check online docs and
   `@zeppos/device-types` (versions in `node_modules/@zeppos/device-types/index.d.ts`).

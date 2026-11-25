@@ -1,0 +1,224 @@
+msgid "back"
+msgstr "Назад"
+
+msgid "not_connected"
+msgstr "Подключение ещё не выполнено"
+
+msgid "status_error"
+msgstr "Ошибка подключения"
+
+msgid "status_ok"
+msgstr "Подключено"
+
+msgid "areas"
+msgstr "Локации"
+
+msgid "entities"
+msgstr "Сущности"
+
+msgid "connection"
+msgstr "Подключение"
+
+msgid "connection_desc"
+msgstr "URL Home Assistant и Long-Lived Access Token (Профиль -> Безопасность -> Долгоживущие токены доступа)"
+
+msgid "ha_url"
+msgstr "URL Home Assistant"
+
+msgid "ha_token"
+msgstr "Токен доступа"
+
+msgid "sync"
+msgstr "Проверить и загрузить сущности"
+
+msgid "sync_hint"
+msgstr "Укажите URL и токен, затем нажмите «Проверить и загрузить сущности»."
+
+msgid "main_screen"
+msgstr "Основной экран (локации)"
+
+msgid "main_screen_desc"
+msgstr "Выберите локации, отображаемые на часах, и доступные в них сущности"
+
+msgid "configure"
+msgstr "Настроить"
+
+msgid "widget_screens"
+msgstr "Экраны виджетов (1-6)"
+
+msgid "widget_screens_desc"
+msgstr "Кнопочные экраны на часах, переключаются свайпом влево/вправо"
+
+msgid "no_areas"
+msgstr "В Home Assistant не найдено локаций (сущности без локации не показываются)."
+
+msgid "enabled_entities"
+msgstr "Включённых сущностей"
+
+msgid "show_on_watch"
+msgstr "Показывать на часах"
+
+msgid "entities_grouped"
+msgstr "сущности, сгруппированы по типам"
+
+msgid "no_entities"
+msgstr "В этой локации нет сущностей"
+
+msgid "unnamed_button"
+msgstr "Кнопка без названия"
+
+msgid "edit"
+msgstr "Изменить"
+
+msgid "delete"
+msgstr "Удалить"
+
+msgid "add_button"
+msgstr "+ Добавить кнопку"
+
+msgid "enabled"
+msgstr "Включён"
+
+msgid "screen_name"
+msgstr "Название экрана"
+
+msgid "button_settings"
+msgstr "Настройки кнопки"
+
+msgid "entity"
+msgstr "Сущность"
+
+msgid "button_text"
+msgstr "Текст кнопки"
+
+msgid "action"
+msgstr "Действие"
+
+msgid "shape"
+msgstr "Форма"
+
+msgid "size"
+msgstr "Размер"
+
+msgid "slot"
+msgstr "Слот"
+
+msgid "color_on"
+msgstr "Цвет (включено)"
+
+msgid "color_off"
+msgstr "Цвет (выключено)"
+
+msgid "save"
+msgstr "Сохранить"
+
+msgid "Auto (toggle / fire)"
+msgstr "Авто (переключить/запустить)"
+
+msgid "Run (fire / trigger)"
+msgstr "Выполнить (запустить/спустить)"
+
+msgid "Turn on"
+msgstr "Включить"
+
+msgid "Turn off"
+msgstr "Выключить"
+
+msgid "Small (1 cell)"
+msgstr "Маленькая (1 ячейка)"
+
+msgid "Wide (full row)"
+msgstr "Широкая (вся строка)"
+
+msgid "Square"
+msgstr "Квадрат"
+
+msgid "Rounded"
+msgstr "Скруглённая"
+
+msgid "Circle"
+msgstr "Круг"
+
+msgid "domain_light"
+msgstr "Свет"
+
+msgid "domain_switch"
+msgstr "Переключатели"
+
+msgid "domain_scene"
+msgstr "Сцены"
+
+msgid "domain_script"
+msgstr "Скрипты"
+
+msgid "domain_automation"
+msgstr "Автоматизации"
+
+msgid "domain_sensor"
+msgstr "Сенсоры"
+
+msgid "domain_binary_sensor"
+msgstr "Бинарные сенсоры"
+
+msgid "domain_cover"
+msgstr "Жалюзи/ворота"
+
+msgid "domain_climate"
+msgstr "Климат"
+
+msgid "domain_lock"
+msgstr "Замки"
+
+msgid "domain_fan"
+msgstr "Вентиляторы"
+
+msgid "domain_media_player"
+msgstr "Медиаплееры"
+
+msgid "domain_vacuum"
+msgstr "Роботы-пылесосы"
+
+msgid "domain_input_boolean"
+msgstr "Помощники (флаг)"
+
+msgid "domain_humidifier"
+msgstr "Увлажнители"
+
+msgid "domain_person"
+msgstr "Люди"
+
+msgid "domain_zone"
+msgstr "Зоны"
+
+msgid "domain_group"
+msgstr "Группы"
+
+msgid "domain_weather"
+msgstr "Погода"
+
+msgid "domain_camera"
+msgstr "Камеры"
+
+msgid "domain_remote"
+msgstr "Пульты"
+
+msgid "domain_alarm_control_panel"
+msgstr "Сигнализации"
+
+msgid "domain_device_tracker"
+msgstr "Трекеры устройств"
+
+msgid "domain_number"
+msgstr "Числа"
+
+msgid "domain_select"
+msgstr "Списки"
+
+msgid "domain_button"
+msgstr "Кнопки"
+
+msgid "domain_update"
+msgstr "Обновления"
+
+msgid "domain_timer"
+msgstr "Таймеры"

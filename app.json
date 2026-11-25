@@ -5,8 +5,8 @@
     "appName": "Zepp HA Companion",
     "appType": "app",
     "version": {
-      "code": 1,
-      "name": "0.1.0"
+      "code": 2,
+      "name": "0.2.0"
     },
     "icon": "icon.png",
     "vender": "Se7ven",
@@ -28,11 +28,15 @@
       "module": {
         "page": {
           "pages": [
-            "page/home/index.page"
+            "page/home/index.page",
+            "page/area/index.page"
           ]
         },
         "app-side": {
           "path": "app-side/index"
+        },
+        "setting": {
+          "path": "setting/index"
         }
       },
       "platforms": [

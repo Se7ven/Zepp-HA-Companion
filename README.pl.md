@@ -11,7 +11,24 @@ ze smartwatchami **Amazfit** działającymi pod systemem **Zepp OS**.
 - Architektura: mini-aplikacja Zepp OS (strony na zegarku + usługa app-side z dostępem do sieci przez telefon)
 - Połączenie z Home Assistant: REST API + Long-Lived Access Token
 
-> ⚠️ Projekt znajduje się na etapie szkieletu. Zobacz [AGENTS.pl.md](AGENTS.pl.md) — opis architektury i plan prac.
+## Funkcje
+
+- **Ekran główny (hub)** — obszary Home Assistant włączone w ustawieniach; każdy otwiera
+  listę encji pogrupowaną po typach (światła, przełączniki, sceny, skrypty, automatyzacje …)
+  z przełączaniem po dotknięciu.
+- **6 konfigurowalnych ekranów widżetów** — przewijane swipe'em w lewo/prawo od huba. Każdy
+  przycisk konfiguruje się z telefonu: etykieta, kształt, rozmiar, pozycja w siatce, kolor
+  (oddzielnie dla stanu WŁ. i WYŁ.) oraz akcja (auto-przełącz / uruchom / włącz / wyłącz).
+- **Konfiguracja z telefonu** — w oficjalnej aplikacji Zepp (Ustawienia aplikacji): połączenie
+  (URL HA + token), wykrywanie encji, przełączniki obszarów i encji oraz edytor ekranów widżetów.
+
+## Konfiguracja
+
+1. Home Assistant → twój profil użytkownika → **Długoterminowe tokeny dostępu** — utwórz token.
+2. W aplikacji Zepp otwórz **Ustawienia** aplikacji: podaj bazowy URL HA
+   (np. `http://192.168.1.10:8123`) i token, a następnie naciśnij **Synchronizuj**.
+3. Włącz obszary i encje, które chcesz mieć na zegarku; jeśli chcesz, skonfiguruj ekrany widżetów.
+4. Otwórz aplikację na zegarku — stany są odświeżane przy każdym uruchomieniu.
 
 ## Budowanie
 
@@ -24,6 +41,11 @@ npm run preview   # instalacja na zegarku przez kod QR (wymaga zeus login)
 
 Gotowe paczki: [GitHub Actions](https://github.com/Se7ven/Zepp-HA-Companion/actions) /
 [Releases](https://github.com/Se7ven/Zepp-HA-Companion/releases) (tagi `v*.*.*`).
+
+## Dokumentacja
+
+Uwagi dla programistów, architektura i konwencje: [AGENTS.pl.md](AGENTS.pl.md)
+([English](AGENTS.md) | [Русский](AGENTS.ru.md)).
 
 ## Licencja
 

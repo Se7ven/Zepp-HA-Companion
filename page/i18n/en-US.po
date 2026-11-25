@@ -1,6 +1,116 @@
-msgid "hi"
-msgstr "Hello, Zepp OS!"
-msgid "os_info"
-msgstr "OS Info"
-msgid "app_info"
-msgstr "App Info"
+msgid "loading"
+msgstr "Loading…"
+
+msgid "error_connection"
+msgstr "Cannot reach Home Assistant. Check the phone connection."
+
+msgid "not_configured"
+msgstr "Not configured. Open the Zepp App settings."
+
+msgid "connected"
+msgstr "Connected"
+
+msgid "home_title"
+msgstr "Home Assistant"
+
+msgid "no_areas_hint"
+msgstr "No areas enabled. Enable areas and entities in the Zepp App settings."
+
+msgid "no_buttons_hint"
+msgstr "No buttons on this screen. Configure it in the Zepp App settings."
+
+msgid "screen"
+msgstr "Screen"
+
+msgid "no_entities"
+msgstr "No entities enabled for this area."
+
+msgid "state_on"
+msgstr "on"
+
+msgid "state_off"
+msgstr "off"
+
+msgid "domain_light"
+msgstr "Lights"
+
+msgid "domain_switch"
+msgstr "Switches"
+
+msgid "domain_scene"
+msgstr "Scenes"
+
+msgid "domain_script"
+msgstr "Scripts"
+
+msgid "domain_automation"
+msgstr "Automations"
+
+msgid "domain_sensor"
+msgstr "Sensors"
+
+msgid "domain_binary_sensor"
+msgstr "Binary sensors"
+
+msgid "domain_cover"
+msgstr "Covers"
+
+msgid "domain_climate"
+msgstr "Climate"
+
+msgid "domain_lock"
+msgstr "Locks"
+
+msgid "domain_fan"
+msgstr "Fans"
+
+msgid "domain_media_player"
+msgstr "Media players"
+
+msgid "domain_vacuum"
+msgstr "Vacuums"
+
+msgid "domain_input_boolean"
+msgstr "Helpers (boolean)"
+
+msgid "domain_humidifier"
+msgstr "Humidifiers"
+
+msgid "domain_person"
+msgstr "People"
+
+msgid "domain_zone"
+msgstr "Zones"
+
+msgid "domain_group"
+msgstr "Groups"
+
+msgid "domain_weather"
+msgstr "Weather"
+
+msgid "domain_camera"
+msgstr "Cameras"
+
+msgid "domain_remote"
+msgstr "Remotes"
+
+msgid "domain_alarm_control_panel"
+msgstr "Alarms"
+
+msgid "domain_device_tracker"
+msgstr "Device trackers"
+
+msgid "domain_number"
+msgstr "Numbers"
+
+msgid "domain_select"
+msgstr "Select helpers"
+
+msgid "domain_button"
+msgstr "Buttons"
+
+msgid "domain_update"
+msgstr "Updates"
+
+msgid "domain_timer"
+msgstr "Timers"

@@ -49,12 +49,26 @@ Dokumentacja w `docs/` jest na licencji Apache-2.0 (patrz `docs/.LICENSE.txt`), 
   `@zeppos/zml` (`BasePage` → `this.request({ method, ... })` ↔ `BaseSideService.onRequest(req, res)`).
   Działa to przez kanał Bluetooth z telefonem: faktyczne żądanie sieciowe wykonuje telefon
   przez aplikację Zepp/Zepp Health.
-- **Ustawienia** (`setting/`) — ekran ustawień aplikacji w telefonie (Zepp App → Ustawienia aplikacji),
-  wartości trafiają do `settingsStorage` (`ha_config`: `{ url, token }`). **Jeszcze nie utworzony** —
-  dodaj przez `npx create-zos module setting`.
-- Home Assistant: REST (`GET /api/`, `GET /api/states`, `POST /api/services/...`) +
-  Long-Lived Access Token. Długotrwałe połączenie WebSocket z zegarka jest zawodne —
-  szkielet używa odpytywania REST; ostateczną decyzję udokumentuj w ADR po weryfikacji.
+- **Ustawienia** (`setting/`) — pełna aplikacja ustawień w telefonie (Zepp App → Ustawienia
+  aplikacji): połączenie (URL HA + token), wykrywanie encji, przełączniki obszarów i encji oraz
+  edytor przycisków ekranów widżetów. To prawdziwa mini-aplikacja JS (`setting/index.js`)
+  z komponentami ambient (`View`, `Section`, `Toggle`, `Select`, `TextInput`, `Button`, ...);
+  widok przebudowuje się przy każdej zmianie `settingsStorage`. Stan nawigacji jest przechowywany
+  w kluczu `ha_ui`.
+- **`settingsStorage` jest dostępny tylko po stronie telefonu.** Serwis app-side czyta i zapisuje
+  go przez `settingsLib` z `@zeppos/zml/base-side`; zegarka widzi go tylko przez serwis app-side.
+  Telefon wysyła zmiany na zegarek: `onSettingsChange` → `this.call({ method })` → `onCall` strony.
+- **Home Assistant:** wyłącznie odpytywanie REST — Zepp OS **nie udostępnia klienta WebSocket**,
+  decyzja jest ostateczna. Wykrywanie (`app-side/index.js: discover()`) pobiera identyfikatory
+  i nazwy encji z `GET /api/states`, a przynależność do obszarów z `GET /api/template`
+  z szablonem Jinja (`area_id()`/`area_name()`), ponieważ rejestr obszarów HA jest inaczej
+  niedostępny. Odpowiedź `/api/template` to `text/plain` — **nie parsuj jej jako JSON**.
+- **UI zegarka:** ekrany przewijają się poziomym swipe'em przez
+  `setScrollMode(SCROLL_MODE_SWIPER_HORIZONTAL)` z `VIEW_CONTAINER(page: i)` — maksymalnie
+  7 kontenerów na stronę (1 hub + 6 ekranów widżetów mieści się co do sztuki). `LIST_VIEW`
+  wymaga `API_LEVEL` 5.0 i jest **niedostępny** (target to 4.0): przewijane listy budujemy
+  z wierszy `BUTTON` wewnątrz `VIEW_CONTAINER(scroll_enable: 1)`. Kolory stanów przycisków
+  pochodzą z ustawień (`colorOn`/`colorOff`).
 
 ## Polecenia
 
@@ -84,17 +98,25 @@ CI: GitHub Actions (`.github/workflows/`). `build.yml` buduje pakiet `.zab` i wg
 app.js                  # punkt wejścia urządzenia (cykl życia App)
 app.json                # konfiguracja mini-aplikacji (appId, apiVersion, targets, i18n)
 page/
-  home/                 # strona główna (index.page.js + index.layout/)
+  home/                 # hub + 6 przewijanych swipe'em ekranów widżetów (index.page.js)
+  area/                 # lista encji obszaru, pogrupowana po domenach (index.page.js)
   i18n/                 # tłumaczenia UI (en-US.po, ru-RU.po, zh-CN.po)
 app-side/
-  index.js              # most sieciowy do Home Assistant (fetch przez telefon)
-  i18n/
-setting/                # (TODO) ustawienia HA w telefonie
-utils/config/constants.js  # klucze pamięci, wartości domyślne
+  index.js              # most REST do HA + wykrywanie + synchronizacja ustawień (fetch przez telefon)
+setting/
+  index.js              # aplikacja ustawień w telefonie (połączenie, obszary, edytor ekranów)
+  i18n/                 # tłumaczenia UI ustawień (en-US.po, ru-RU.po)
+utils/
+  ha.js                 # pomocniki HA: mapa serwisów, stan on/off, parsowanie id
+  config/constants.js   # klucze pamięci (STORAGE_KEYS), wartości domyślne, paleta kolorów
 assets/common.r|common.s   # zasoby per kształt ekranu (r = okrągły 480)
 docs/                   # LOKALNA KOPIA dokumentacji Zepp OS, w gitignore
 scripts/                # skrypty pomocnicze
 ```
+
+Główny przepływ danych: aplikacja ustawień zapisuje `ha_config`/`ha_sync` → serwis app-side
+reaguje przez `onSettingsChange` → `discover()` buforuje `ha_data` → zegarka odpytuje
+`GET_HUB`/`GET_AREA`/`CALL` przez zml.
 
 ## Konwencje
 
@@ -102,19 +124,21 @@ scripts/                # skrypty pomocnicze
 - Widgety UI: `import * as hmUI from '@zos/ui'`; parametry layoutu znajdują się w `index.[pf].layout.js`
   (`[pf]` jest rozwiązywane per platforma: `r`/`s`).
 - Tłumaczenia: format `.po`, klucze przez i18n; nie hardkoduj tekstów w UI.
-- `app.json`: `appId` jest obecnie **placeholderek** `29331` (z szablonu). Prawdziwy id wydaje
+- `app.json`: `appId` jest obecnie **placeholder** `29331` (z szablonu). Prawdziwy id wydaje
   console.zepp.com — przypisz go przed publikacją. Nie zmieniaj `configVersion`.
 - Nie commitować: `node_modules/`, `dist/`, `docs/`, `.zab`, sekretów. Tokena HA nie przechowujemy w repozytorium.
 - Wersjonowanie semantyczne, synchronizowane w `package.json` i `app.json` (`app.version.name`).
 - Polityka językowa dokumentacji: patrz sekcja wyżej — cała dokumentacja w EN/RU/PL z odnośnikami.
 
-## Plan prac (szkielet)
+## Plan prac
 
-- [ ] `setting/` — ekran ustawień Zepp App (URL HA + token) zapisujący do `settingsStorage`
-- [ ] Strona główna → wywołanie `TEST_CONNECTION` / `GET_STATES` z `app-side/`
-- [ ] Lista wybranych encji + przełączanie serwisów (np. światło)
+- [x] `setting/` — ekran ustawień Zepp App (URL HA + token) zapisujący do `settingsStorage`
+- [x] Strona główna → wywołanie `GET_HUB` / `GET_AREA` / `CALL` z `app-side/`
+- [x] Lista encji (obszary → encje pogrupowane po domenach) z przełączaniem
+- [x] 6 konfigurowalnych ekranów widżetów (etykieta, rozmiar, pozycja, kształt, kolory dla on/off, akcja)
+- [x] Decyzja: odpytywanie REST (WebSocket w Zepp OS brak); obszary przez `/api/template`
 - [ ] Buforowanie i łagodna degradacja, gdy HA jest niedostępny
-- [ ] Decyzja: odpytywanie REST vs WebSocket; częstotliwość odświeżania vs bateria
+- [ ] Częstotliwość odświeżania vs bateria (obecnie tylko odświeżanie na żądanie)
 - [ ] Ikona aplikacji, zrzuty ekranu, publikacja w katalogu
 
 ## Znane pułapki
@@ -122,5 +146,9 @@ scripts/                # skrypty pomocnicze
 - Sieć istnieje tylko w app-side; ze strony — wyłącznie `this.request(...)` (zml).
 - `zeus preview` wymaga loginu kontem deweloperskim; `zeus build` nie (zweryfikowane w CI).
 - `@zeppos/zml` to zależność runtime — trzymamy w `dependencies` (nie w `devDependencies`).
+- zml przesyła dane w kawałkach ~3,5 KB — utrzymuj małe pakiety `GET_HUB`/`GET_AREA`
+  (filtruj atrybuty stanów encji po stronie serwisu).
+- `settingsStorage` jest tylko po stronie telefonu; w serwisie app-side używaj `settingsLib`
+  (`@zeppos/zml/base-side`), nigdy nie importuj tam `@zos/settings`.
 - `docs/` to migawka; przed decyzjami o API sprawdzaj dokumentację online oraz
   `@zeppos/device-types` (wersje w `node_modules/@zeppos/device-types/index.d.ts`).

@@ -1,6 +1,116 @@
-msgid "hi"
-msgstr "你好, Zepp OS!"
-msgid "os_info"
-msgstr "系统信息"
-msgid "app_info"
-msgstr "应用信息"
+msgid "loading"
+msgstr "加载中…"
+
+msgid "error_connection"
+msgstr "无法连接 Home Assistant，请检查手机连接。"
+
+msgid "not_configured"
+msgstr "未配置，请在 Zepp App 设置中配置。"
+
+msgid "connected"
+msgstr "已连接"
+
+msgid "home_title"
+msgstr "Home Assistant"
+
+msgid "no_areas_hint"
+msgstr "未启用区域。请在 Zepp App 设置中启用区域和实体。"
+
+msgid "no_buttons_hint"
+msgstr "此屏幕没有按钮。请在 Zepp App 设置中配置。"
+
+msgid "screen"
+msgstr "屏幕"
+
+msgid "no_entities"
+msgstr "该区域没有启用的实体。"
+
+msgid "state_on"
+msgstr "开"
+
+msgid "state_off"
+msgstr "关"
+
+msgid "domain_light"
+msgstr "灯光"
+
+msgid "domain_switch"
+msgstr "开关"
+
+msgid "domain_scene"
+msgstr "场景"
+
+msgid "domain_script"
+msgstr "脚本"
+
+msgid "domain_automation"
+msgstr "自动化"
+
+msgid "domain_sensor"
+msgstr "传感器"
+
+msgid "domain_binary_sensor"
+msgstr "二进制传感器"
+
+msgid "domain_cover"
+msgstr "卷帘"
+
+msgid "domain_climate"
+msgstr "空调"
+
+msgid "domain_lock"
+msgstr "门锁"
+
+msgid "domain_fan"
+msgstr "风扇"
+
+msgid "domain_media_player"
+msgstr "媒体播放器"
+
+msgid "domain_vacuum"
+msgstr "吸尘器"
+
+msgid "domain_input_boolean"
+msgstr "辅助开关"
+
+msgid "domain_humidifier"
+msgstr "加湿器"
+
+msgid "domain_person"
+msgstr "人员"
+
+msgid "domain_zone"
+msgstr "区域"
+
+msgid "domain_group"
+msgstr "组"
+
+msgid "domain_weather"
+msgstr "天气"
+
+msgid "domain_camera"
+msgstr "摄像头"
+
+msgid "domain_remote"
+msgstr "遥控器"
+
+msgid "domain_alarm_control_panel"
+msgstr "报警"
+
+msgid "domain_device_tracker"
+msgstr "设备追踪"
+
+msgid "domain_number"
+msgstr "数值"
+
+msgid "domain_select"
+msgstr "选择助手"
+
+msgid "domain_button"
+msgstr "按钮"
+
+msgid "domain_update"
+msgstr "更新"
+
+msgid "domain_timer"
+msgstr "计时器"

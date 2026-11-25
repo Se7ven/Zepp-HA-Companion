@@ -1,92 +1,197 @@
 import { log } from '@zos/utils'
-import { settingsStorage } from '@zos/settings'
-import { BaseSideService } from '@zeppos/zml/base-side'
+import { BaseSideService, settingsLib } from '@zeppos/zml/base-side'
+import { STORAGE_KEYS, defaultConfig } from '../utils/config/constants'
+import { splitEntity, isOn, resolveService } from '../utils/ha'
 
 const logger = log.getLogger('ha-side')
 
-/**
- * Read Home Assistant connection settings.
- *
- * Settings come from the companion app config (Zepp App -> App Settings,
- * see `setting/` module, not created yet) with a fallback to local storage.
- * Expected shape: { url: "http://homeassistant.local:8123", token: "..." }
- */
-function getHaConfig() {
+/* ------------------------------------------------------------------ */
+/* settingsStorage helpers (phone-side persistent storage, zml wrapper) */
+/* ------------------------------------------------------------------ */
+
+function readJson(key, fallback) {
   try {
-    const raw = settingsStorage.getItem('ha_config') || ''
-    if (!raw) {
-      return null
-    }
-    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
-    const url = (parsed.url || '').replace(/\/+$/, '')
-    const token = parsed.token || ''
-    if (!url || !token) {
-      return null
-    }
-    return { url, token }
+    const raw = settingsLib.getItem(key)
+    if (raw === undefined || raw === null || raw === '') return fallback
+    return typeof raw === 'string' ? JSON.parse(raw) : raw
   } catch (e) {
-    logger.log('ha_config parse error', e)
-    return null
+    logger.log('readJson error', key, e)
+    return fallback
   }
 }
 
-async function haRequest(config, path) {
+function writeJson(key, value) {
+  settingsLib.setItem(key, JSON.stringify(value))
+}
+
+function getHaConfig() {
+  const url = (settingsLib.getItem(STORAGE_KEYS.HA_URL) || '').replace(/\/+$/, '')
+  const token = settingsLib.getItem(STORAGE_KEYS.HA_TOKEN) || ''
+  if (!url || !token) return null
+  return { url, token }
+}
+
+function setStatus(ok, message, extra) {
+  const status = Object.assign(
+    { ok: !!ok, message: message || '', ts: new Date().toISOString() },
+    extra || {}
+  )
+  writeJson(STORAGE_KEYS.HA_STATUS, status)
+  // tell an open watch page that something changed
+  this.call({ method: 'status.changed', params: status })
+}
+
+/* -------------------------- HA REST client ------------------------ */
+
+async function haFetch(ha, path, options) {
   const response = await fetch({
-    url: `${config.url}${path}`,
-    method: 'GET',
+    url: `${ha.url}${path}`,
+    method: (options && options.method) || 'GET',
     headers: {
-      Authorization: `Bearer ${config.token}`,
+      Authorization: `Bearer ${ha.token}`,
       'Content-Type': 'application/json',
     },
-    timeout: 10000,
+    body: options && options.body ? JSON.stringify(options.body) : undefined,
+    timeout: 15000,
   })
-  return typeof response.body === 'string' ? JSON.parse(response.body) : response.body
+  const body = typeof response.body === 'string' ? JSON.parse(response.body) : response.body
+  return body
+}
+
+async function haGetStates(ha) {
+  return haFetch(ha, '/api/states')
 }
 
 /**
- * GET /api/ - unauthenticated endpoint used as a connectivity probe.
- * Returns { connected, version } on success.
+ * Entity -> area mapping via the Jinja template endpoint (Zepp OS has no
+ * WebSocket, so the HA area/device registries are not directly reachable;
+ * `area_id()` / `area_name()` template functions cover both for us).
+ * Returns { [entity_id]: areaId, ... }; failed lookups map to ''.
  */
-async function testConnection(res) {
-  const config = getHaConfig()
-  if (!config) {
-    res(null, { connected: false, error: 'NOT_CONFIGURED' })
-    return
-  }
-  try {
-    const data = await haRequest(config, '/api/')
-    res(null, { connected: data.message === 'API running.', version: data.version || '' })
-  } catch (error) {
-    logger.log('testConnection error', error)
-    res(null, { connected: false, error: String((error && error.message) || error) })
-  }
+async function haAreaMap(ha) {
+  const template =
+    '{% for s in states %}{{ s.entity_id }}|{{ area_id(s.entity_id) }}\n{% endfor %}'
+  const text = await fetch({
+    url: `${ha.url}/api/template?template=${encodeURIComponent(template)}`,
+    method: 'GET',
+    headers: { Authorization: `Bearer ${ha.token}` },
+    timeout: 15000,
+  })
+  const raw = typeof text.body === 'string' ? text.body : String(text.body)
+  const map = {}
+  raw.split('\n').forEach((line) => {
+    const i = line.indexOf('|')
+    if (i <= 0) return
+    const entity = line.slice(0, i)
+    let area = line.slice(i + 1).trim()
+    if (!area || area === 'None') area = ''
+    map[entity] = area
+  })
+  return map
 }
 
+/** Compact entity states list [{e, n, s, on}] for the given ids (or all actionable). */
+async function haCompactStates(ha, wantedIds) {
+  const states = await haGetStates(ha)
+  const wanted = wantedIds && wantedIds.length ? {} : null
+  if (wanted) wantedIds.forEach((id) => (wanted[id] = true))
+  const out = []
+  ;(states || []).forEach((s) => {
+    if (wanted && !wanted[s.entity_id]) return
+    const { domain } = splitEntity(s.entity_id)
+    out.push({
+      e: s.entity_id,
+      n: (s.attributes && s.attributes.friendly_name) || s.entity_id,
+      s: s.state,
+      on: isOn(domain, s.state),
+    })
+  })
+  return out
+}
+
+/* --------------------------- discovery ---------------------------- */
+
 /**
- * GET /api/states - all entity states.
- * Returns { connected, states } where states is a compact
- * [{ entity_id, state, friendly_name }] list.
+ * Probe HA, pull all entities with areas, cache to settingsStorage
+ * (`ha_data`) which also re-renders the Settings App.
  */
-async function getStates(res) {
-  const config = getHaConfig()
-  if (!config) {
-    res(null, { connected: false, error: 'NOT_CONFIGURED' })
+async function discover(ctx) {
+  const ha = getHaConfig()
+  if (!ha) {
+    setStatus.call(ctx, false, 'NOT_CONFIGURED')
     return
   }
   try {
-    const states = await haRequest(config, '/api/states')
-    res(null, {
-      connected: true,
-      states: (states || []).map((s) => ({
-        entity_id: s.entity_id,
-        state: s.state,
-        friendly_name: (s.attributes && s.attributes.friendly_name) || s.entity_id,
-      })),
+    const info = await haFetch(ha, '/api/')
+    if (!info || info.message !== 'API running.') {
+      setStatus.call(ctx, false, 'API_NOT_RUNNING')
+      return
+    }
+    const [states, areaMap] = await Promise.all([haGetStates(ha), haAreaMap(ha)])
+
+    const areaNames = {}
+    try {
+      // friendly area names via template (cheap second call over unique ids)
+      const ids = {}
+      Object.keys(areaMap).forEach((id) => areaMap[id] && (ids[areaMap[id]] = true))
+      const list = Object.keys(ids)
+      if (list.length) {
+        const t = '{% for a in [' + list.map((id) => JSON.stringify(id)).join(',') + '] %}{{ a }}|{{ area_name(a) }}\n{% endfor %}'
+        const r = await fetch({
+          url: `${ha.url}/api/template?template=${encodeURIComponent(t)}`,
+          method: 'GET',
+          headers: { Authorization: `Bearer ${ha.token}` },
+          timeout: 15000,
+        })
+        const raw = typeof r.body === 'string' ? r.body : String(r.body)
+        raw.split('\n').forEach((line) => {
+          const i = line.indexOf('|')
+          if (i <= 0) return
+          const id = line.slice(0, i)
+          let name = line.slice(i + 1).trim()
+          if (name && name !== 'None') areaNames[id] = name
+        })
+      }
+    } catch (e) {
+      logger.log('area names lookup failed', e)
+    }
+
+    const areas = {}
+    const entities = []
+    ;(states || []).forEach((s) => {
+      const areaId = areaMap[s.entity_id] || ''
+      if (areaId && !areas[areaId]) {
+        areas[areaId] = { id: areaId, name: areaNames[areaId] || areaId }
+      }
+      entities.push({
+        e: s.entity_id,
+        n: (s.attributes && s.attributes.friendly_name) || s.entity_id,
+        d: splitEntity(s.entity_id).domain,
+        a: areaId,
+      })
+    })
+
+    writeJson(STORAGE_KEYS.HA_DATA, {
+      ts: new Date().toISOString(),
+      version: info.version || '',
+      areas: Object.keys(areas).map((k) => areas[k]).sort((a, b) => (a.name > b.name ? 1 : -1)),
+      entities,
+    })
+    setStatus.call(ctx, true, 'OK', {
+      version: info.version || '',
+      areasCount: Object.keys(areas).length,
+      entitiesCount: entities.length,
     })
   } catch (error) {
-    logger.log('getStates error', error)
-    res(null, { connected: false, error: String((error && error.message) || error) })
+    logger.log('discover error', error)
+    setStatus.call(ctx, false, String((error && error.message) || error))
   }
+}
+
+/* ------------------------- zml service wiring ---------------------- */
+
+function reply(res, data) {
+  res(null, data)
 }
 
 AppSideService(
@@ -96,18 +201,108 @@ AppSideService(
     },
 
     onRequest(req, res) {
+      const params = (req && req.params) || {}
       logger.log('onRequest', req && req.method)
       switch (req.method) {
-        case 'TEST_CONNECTION':
-          testConnection(res)
+        case 'TEST_CONNECTION': {
+          const ha = getHaConfig()
+          if (!ha) return reply(res, { connected: false, error: 'NOT_CONFIGURED' })
+          haFetch(ha, '/api/')
+            .then((info) => reply(res, { connected: info && info.message === 'API running.', version: (info && info.version) || '' }))
+            .catch((error) => reply(res, { connected: false, error: String((error && error.message) || error) }))
           break
-        case 'GET_STATES':
-          getStates(res)
+        }
+
+        case 'GET_HUB': {
+          // One round-trip payload for the watch home swiper:
+          // config meta + live states of every entity referenced by screen buttons.
+          const config = readJson(STORAGE_KEYS.HA_CONFIG, defaultConfig())
+          const status = readJson(STORAGE_KEYS.HA_STATUS, null)
+          const data = readJson(STORAGE_KEYS.HA_DATA, null)
+          const areaNames = {}
+          if (data && data.areas) data.areas.forEach((a) => (areaNames[a.id] = a.name))
+          const wanted = {}
+          config.screens.forEach((scr) =>
+            (scr.buttons || []).forEach((b) => b.entity && (wanted[b.entity] = true))
+          )
+          const ha = getHaConfig()
+          const wantedList = Object.keys(wanted)
+          if (!ha) {
+            return reply(res, { config, status, areaNames, states: null, error: 'NOT_CONFIGURED' })
+          }
+          if (!wantedList.length) {
+            return reply(res, { config, status, areaNames, states: [], error: null })
+          }
+          haCompactStates(ha, wantedList)
+            .then((states) => reply(res, { config, status, areaNames, states, error: null }))
+            .catch((error) =>
+              reply(res, { config, status, areaNames, states: null, error: String((error && error.message) || error) })
+            )
           break
+        }
+
+        case 'GET_AREA': {
+          const config = readJson(STORAGE_KEYS.HA_CONFIG, defaultConfig())
+          const data = readJson(STORAGE_KEYS.HA_DATA, null)
+          const areaCfg = (config.areas || {})[params.areaId]
+          if (!areaCfg || !data || !data.entities) {
+            return reply(res, { entities: [], error: 'NOT_CONFIGURED' })
+          }
+          const wanted = Object.keys(areaCfg.entities || {}).filter((id) => areaCfg.entities[id])
+          if (!wanted.length) return reply(res, { entities: [], error: null })
+          const nameById = {}
+          data.entities.forEach((e) => (nameById[e.e] = e.n))
+          const ha = getHaConfig()
+          if (!ha) return reply(res, { entities: [], error: 'NOT_CONFIGURED' })
+          haCompactStates(ha, wanted)
+            .then((states) => {
+              states.forEach((s) => {
+                if (!s.n || s.n === s.e) s.n = nameById[s.e] || s.n
+              })
+              reply(res, { entities: states, error: null })
+            })
+            .catch((error) => reply(res, { entities: [], error: String((error && error.message) || error) }))
+          break
+        }
+
+        case 'CALL': {
+          const ha = getHaConfig()
+          if (!ha) return reply(res, { ok: false, error: 'NOT_CONFIGURED' })
+          const entity = params.entity
+          if (!entity) return reply(res, { ok: false, error: 'NO_ENTITY' })
+          // resolve action against the current state, then fire the service
+          haFetch(ha, `/api/states/${encodeURIComponent(entity)}`)
+            .then((current) => {
+              const state = current && current.state
+              const svc = resolveService(entity, state, params.action || 'auto')
+              if (!svc) throw new Error('NO_SERVICE_FOR_' + entity)
+              return haFetch(ha, `/api/services/${svc[0]}/${svc[1]}`, {
+                method: 'POST',
+                body: { entity_id: entity },
+              }).then(() => ({ ok: true, entity, action: svc[1] }))
+            })
+            .catch((error) => {
+              logger.log('CALL error', entity, error)
+              return { ok: false, error: String((error && error.message) || error) }
+            })
+            .then((result) => reply(res, result))
+          break
+        }
+
         default:
-          res(null, { error: 'UNKNOWN_METHOD' })
+          reply(res, { error: 'UNKNOWN_METHOD' })
       }
     },
+
+    onSettingsChange({ key }) {
+      if (key === STORAGE_KEYS.HA_SYNC) {
+        discover(this)
+      } else if (key === STORAGE_KEYS.HA_CONFIG) {
+        this.call({ method: 'config.changed', params: {} })
+      }
+    },
+
+    onRun() {},
 
     onDestroy() {
       logger.log('HA side service destroy')

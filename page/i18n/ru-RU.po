@@ -1,8 +1,116 @@
-msgid "hi"
-msgstr "Привет, Zepp OS!"
+msgid "loading"
+msgstr "Загрузка…"
 
-msgid "os_info"
-msgstr "Сведения ОС"
+msgid "error_connection"
+msgstr "Нет связи с Home Assistant. Проверьте подключение телефона."
 
-msgid "app_info"
-msgstr "О приложении"
+msgid "not_configured"
+msgstr "Не настроено. Откройте настройки в приложении Zepp."
+
+msgid "connected"
+msgstr "Подключено"
+
+msgid "home_title"
+msgstr "Home Assistant"
+
+msgid "no_areas_hint"
+msgstr "Локации не включены. Включите локации и сущности в настройках приложения Zepp."
+
+msgid "no_buttons_hint"
+msgstr "На этом экране нет кнопок. Настройте его в приложении Zepp."
+
+msgid "screen"
+msgstr "Экран"
+
+msgid "no_entities"
+msgstr "Для этой локации нет включённых сущностей."
+
+msgid "state_on"
+msgstr "вкл"
+
+msgid "state_off"
+msgstr "выкл"
+
+msgid "domain_light"
+msgstr "Свет"
+
+msgid "domain_switch"
+msgstr "Переключатели"
+
+msgid "domain_scene"
+msgstr "Сцены"
+
+msgid "domain_script"
+msgstr "Скрипты"
+
+msgid "domain_automation"
+msgstr "Автоматизации"
+
+msgid "domain_sensor"
+msgstr "Сенсоры"
+
+msgid "domain_binary_sensor"
+msgstr "Бинарные сенсоры"
+
+msgid "domain_cover"
+msgstr "Жалюзи/ворота"
+
+msgid "domain_climate"
+msgstr "Климат"
+
+msgid "domain_lock"
+msgstr "Замки"
+
+msgid "domain_fan"
+msgstr "Вентиляторы"
+
+msgid "domain_media_player"
+msgstr "Медиаплееры"
+
+msgid "domain_vacuum"
+msgstr "Роботы-пылесосы"
+
+msgid "domain_input_boolean"
+msgstr "Помощники (флаг)"
+
+msgid "domain_humidifier"
+msgstr "Увлажнители"
+
+msgid "domain_person"
+msgstr "Люди"
+
+msgid "domain_zone"
+msgstr "Зоны"
+
+msgid "domain_group"
+msgstr "Группы"
+
+msgid "domain_weather"
+msgstr "Погода"
+
+msgid "domain_camera"
+msgstr "Камеры"
+
+msgid "domain_remote"
+msgstr "Пульты"
+
+msgid "domain_alarm_control_panel"
+msgstr "Сигнализации"
+
+msgid "domain_device_tracker"
+msgstr "Трекеры устройств"
+
+msgid "domain_number"
+msgstr "Числа"
+
+msgid "domain_select"
+msgstr "Списки"
+
+msgid "domain_button"
+msgstr "Кнопки"
+
+msgid "domain_update"
+msgstr "Обновления"
+
+msgid "domain_timer"
+msgstr "Таймеры"

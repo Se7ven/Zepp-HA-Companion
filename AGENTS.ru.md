@@ -46,13 +46,28 @@
 - **App-Side Service** (`app-side/`) — сервис-компаньон с доступом к сети (`fetch`, `WebSocket`),
   запускается при обращении со страницы. Общение page ↔ side — через `@zeppos/zml`
   (`BasePage` → `this.request({ method, ... })` ↔ `BaseSideService.onRequest(req, res)`).
-  Работает поверх Bluetooth-канала с телефоном: реальный сетевой запрос выполняет телефон через Zepp/Zepp Health приложение.
-- **Setting** (`setting/`) — настройки приложения в телефоне (Zepp App → App Settings UI),
-  значения приходят в `settingsStorage` (`ha_config`: `{ url, token }`). **Пока не создан** —
-  добавить: `npx create-zos module setting`.
-- Home Assistant: REST (`GET /api/`, `GET /api/states`, `POST /api/services/...`) +
-  Long-Lived Access Token. Долговременное WebSocket-соединение на часах нестабильно —
-  для скелета выбран REST-поллинг; решение зафиксировать в ADR/docs после проверки.
+  Работает поверх Bluetooth-канала с телефоном: реальный сетевой запрос выполняет телефон через
+  Zepp/Zepp Health приложение.
+- **Setting** (`setting/`) — полноценное приложение настроек в телефоне (Zepp App → Настройки
+  приложения): подключение (URL HA + токен), обнаружение сущностей, переключатели локаций и
+  сущностей, редактор кнопок виджетных экранов. Это настоящее JS мини-приложение
+  (`setting/index.js`) с ambient-компонентами (`View`, `Section`, `Toggle`, `Select`,
+  `TextInput`, `Button`, ...); представление перестраивается при любом изменении
+  `settingsStorage`. Состояние навигации хранится в ключе `ha_ui`.
+- **`settingsStorage` доступен только на телефоне.** Side-сервис читает/пишет его через
+  `settingsLib` из `@zeppos/zml/base-side`; часы видят его только через side-сервис.
+  Телефон пушит изменения на часы: `onSettingsChange` → `this.call({ method })` → `onCall` страницы.
+- **Home Assistant:** только REST-поллинг — в Zepp OS **нет WebSocket-клиента**, решение принято.
+  Обнаружение (`app-side/index.js: discover()`) получает id и имена сущностей из
+  `GET /api/states`, а принадлежность к локациям — из `GET /api/template` с шаблоном Jinja
+  (`area_id()`/`area_name()`), поскольку реестр локаций HA иначе недоступен.
+  Ответ `/api/template` — это `text/plain`, его **нельзя** парсить как JSON.
+- **UI часов:** экраны листаются свайпом по горизонтали через
+  `setScrollMode(SCROLL_MODE_SWIPER_HORIZONTAL)` с `VIEW_CONTAINER(page: i)` — максимум 7
+  контейнеров на страницу (1 хаб + 6 виджетных экранов встают идеально). `LIST_VIEW` требует
+  `API_LEVEL` 5.0 и **недоступен** (таргет — 4.0): прокручиваемые списки собираются из
+  строк `BUTTON` внутри `VIEW_CONTAINER(scroll_enable: 1)`. Цвета состояний кнопок берутся
+  из настроек (`colorOn`/`colorOff`).
 
 ## Команды
 
@@ -82,17 +97,25 @@ CI: GitHub Actions (`.github/workflows/`). `build.yml` собирает `.zab` �
 app.js                  # точка входа устройства (App lifecycle)
 app.json                # конфигурация мини-приложения (appId, apiVersion, targets, i18n)
 page/
-  home/                 # главная страница (index.page.js + index.layout/)
+  home/                 # хаб + 6 листаемых свайпом виджетных экранов (index.page.js)
+  area/                 # список сущностей локации, сгруппированный по доменам (index.page.js)
   i18n/                 # переводы UI (en-US.po, ru-RU.po, zh-CN.po)
 app-side/
-  index.js              # сетевой мост к Home Assistant (fetch через телефон)
-  i18n/
-setting/                # (TODO) настройки HA в телефоне
-utils/config/constants.js  # ключи хранилища, дефолты
+  index.js              # REST-мост к HA + обнаружение + синк настроек (fetch через телефон)
+setting/
+  index.js              # приложение настроек в телефоне (подключение, локации, редактор экранов)
+  i18n/                 # переводы UI настроек (en-US.po, ru-RU.po)
+utils/
+  ha.js                 # хелперы HA: карта сервисов, состояние on/off, разбор id
+  config/constants.js   # ключи хранилища (STORAGE_KEYS), дефолты, палитра цветов
 assets/common.r|common.s   # ресурсы под форматы экранов (r - круглый 480)
 docs/                   # ОФФЛАЙН-КОПИЯ доков Zepp OS, в gitignore
 scripts/                # служебные скрипты
 ```
+
+Основной поток данных: приложение настроек пишет `ha_config`/`ha_sync` → side-сервис
+реагирует через `onSettingsChange` → `discover()` кэширует `ha_data` → часы запрашивают
+`GET_HUB`/`GET_AREA`/`CALL` через zml.
 
 ## Конвенции
 
@@ -106,13 +129,15 @@ scripts/                # служебные скрипты
 - Версионирование: семантическое, синхронно в `package.json` и `app.json` (`app.version.name`).
 - Политика языков документации: см. раздел выше — вся документация на EN/RU/PL с перекрёстными ссылками.
 
-## Дорожная карта (скелет)
+## Дорожная карта
 
-- [ ] `setting/` — экран настроек Zepp App (URL HA + токен) с записью в `settingsStorage`
-- [ ] Home page → вызов `TEST_CONNECTION` / `GET_STATES` из `app-side/`
-- [ ] Список избранных сущностей + переключение сервисов (light switch и т.п.)
+- [x] `setting/` — экран настроек Zepp App (URL HA + токен) с записью в `settingsStorage`
+- [x] Home page → вызов `GET_HUB` / `GET_AREA` / `CALL` из `app-side/`
+- [x] Список сущностей (локации → сущности по типам) с переключением
+- [x] 6 настраиваемых виджетных экранов (подпись, размер, позиция, форма, цвета для вкл/выкл, действие)
+- [x] Решение: REST-поллинг (WebSocket в Zepp OS нет); локации через `/api/template`
 - [ ] Кэширование и деградация при недоступности HA
-- [ ] Решить: REST-поллинг vs WebSocket; частота обновления vs батарея
+- [ ] Частота обновления vs батарея (сейчас только обновление по запросу)
 - [ ] Иконка приложения, скриншоты, публикация в каталог
 
 ## Известные подводные камни
@@ -120,5 +145,9 @@ scripts/                # служебные скрипты
 - Сеть есть только в app-side; из page — только `this.request(...)` (zml).
 - `zeus preview` требует логина аккаунтом разработчика; `zeus build` — нет (проверено в CI-сценарии).
 - `@zeppos/zml` — зависимость рантайма, держим в `dependencies` (не `devDependencies`).
+- zml передаёт данные чанками ~3.5 КБ — держите полезные нагрузки `GET_HUB`/`GET_AREA`
+  компактными (обрезайте атрибуты состояний на стороне сервиса).
+- `settingsStorage` доступен только с телефона; в side-сервисе используйте `settingsLib`
+  (`@zeppos/zml/base-side`), никогда не импортируйте там `@zos/settings`.
 - Документация в `docs/` — снапшот; перед принятием решений по API сверяйтесь с онлайном
   и `@zeppos/device-types` (версии в `node_modules/@zeppos/device-types/index.d.ts`).
