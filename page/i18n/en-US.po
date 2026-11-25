@@ -120,3 +120,6 @@ msgstr "Updates"
 
 msgid "domain_timer"
 msgstr "Timers"
+
+msgid "area_none"
+msgstr "Unassigned"

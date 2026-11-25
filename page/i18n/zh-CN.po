@@ -120,3 +120,6 @@ msgstr "更新"
 
 msgid "domain_timer"
 msgstr "计时器"
+
+msgid "area_none"
+msgstr "未分区"

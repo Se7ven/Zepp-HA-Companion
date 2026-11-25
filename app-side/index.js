@@ -202,15 +202,19 @@ async function discover(ctx) {
       })
     })
 
+    const areaList = Object.keys(areas).map((k) => areas[k])
+    if (entities.some((e) => !e.a)) areaList.push({ id: '__none__', name: 'Unassigned' })
+    areaList.sort((a, b) => (a.name > b.name ? 1 : -1))
+
     writeJson(STORAGE_KEYS.HA_DATA, {
       ts: new Date().toISOString(),
       version: info.version || '',
-      areas: Object.keys(areas).map((k) => areas[k]).sort((a, b) => (a.name > b.name ? 1 : -1)),
+      areas: areaList,
       entities,
     })
     setStatus.call(ctx, true, 'OK', {
       version: info.version || '',
-      areasCount: Object.keys(areas).length,
+      areasCount: areaList.length,
       entitiesCount: entities.length,
     })
   } catch (error) {

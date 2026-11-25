@@ -228,3 +228,6 @@ msgstr "Иконка"
 
 msgid "icon_none"
 msgstr "Без иконки"
+
+msgid "area_none"
+msgstr "Без зоны"

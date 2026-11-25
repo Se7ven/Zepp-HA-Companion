@@ -120,3 +120,6 @@ msgstr "Обновления"
 
 msgid "domain_timer"
 msgstr "Таймеры"
+
+msgid "area_none"
+msgstr "Без зоны"

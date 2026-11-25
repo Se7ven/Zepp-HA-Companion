@@ -10,6 +10,25 @@ import { ICON_FONT, iconChar, DOMAIN_ICON } from '../../utils/icons'
 const logger = log.getLogger('ha-area')
 logger.log('module load')
 
+/* Robust helpers: native widget calls can throw non-Error objects on some firmwares */
+function errStr(error) {
+  try {
+    return String((error && error.message) || error) + ' | ' + JSON.stringify(error)
+  } catch (e) {
+    return String(error)
+  }
+}
+
+function safeDestroy(w) {
+  if (!w) return
+  try {
+    destroyWidget(w)
+  } catch (e) {
+    logger.log('safeDestroy failed: ' + errStr(e))
+  }
+}
+
+
 const PAGE_W = 480
 const MARGIN = 24
 const GAP = 10
@@ -99,7 +118,7 @@ Page(
         logger.log('GET_AREA failed', error)
         this.state.lastRefreshAt = Date.now() // retry no sooner than one interval later
         if (this.state.loadingText) {
-          destroyWidget(this.state.loadingText)
+          safeDestroy(this.state.loadingText)
           this.state.loadingText = null
         }
         createWidget(widget.TEXT, {
@@ -117,7 +136,7 @@ Page(
   },
 
   destroyRendered() {
-    this.state.widgets.forEach((w) => destroyWidget(w))
+    this.state.widgets.forEach((w) => safeDestroy(w))
     this.state.widgets = []
     this.state.rows = []
   },
@@ -129,7 +148,7 @@ Page(
 
   render(data) {
     if (this.state.loadingText) {
-      destroyWidget(this.state.loadingText)
+      safeDestroy(this.state.loadingText)
       this.state.loadingText = null
     }
     if (this.state.built) this.destroyRendered()

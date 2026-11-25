@@ -183,7 +183,7 @@ AppSettingsPage({
       const enabledCount = Object.keys(areaCfg.entities || {}).filter((id) => areaCfg.entities[id]).length
       rows.push(
         Section(
-          { title: area.name, description: gettext('enabled_entities') + ': ' + enabledCount },
+          { title: area.id === '__none__' ? gettext('area_none') : area.name, description: gettext('enabled_entities') + ': ' + enabledCount },
           [
             Toggle({
               label: gettext('show_on_watch'),
@@ -215,14 +215,14 @@ AppSettingsPage({
     const area = data && data.areas.filter((a) => a.id === ui.areaId)[0]
     const rows = [
       this.back({ view: 'main', areaId: null }),
-      Text({ bold: true, style: { fontSize: '16px', padding: '8px 0' } }, [(area ? area.name : ui.areaId) + ' — ' + gettext('entities_grouped')]),
+      Text({ bold: true, style: { fontSize: '16px', padding: '8px 0' } }, [(area ? (area.id === '__none__' ? gettext('area_none') : area.name) : ui.areaId) + ' — ' + gettext('entities_grouped')]),
     ]
     if (!data) return View({ style: { padding: '12px 16px' } }, rows)
 
     if (!config.areas[ui.areaId]) config.areas[ui.areaId] = { enabled: true, entities: {} }
     const entities = {}
     data.entities
-      .filter((e) => e.a === ui.areaId)
+      .filter((e) => (e.a || '__none__') === ui.areaId)
       .forEach((e) => {
         if (!entities[e.d]) entities[e.d] = []
         entities[e.d].push(e)

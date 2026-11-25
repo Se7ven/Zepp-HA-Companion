@@ -228,3 +228,6 @@ msgstr "Icon"
 
 msgid "icon_none"
 msgstr "None"
+
+msgid "area_none"
+msgstr "Unassigned"

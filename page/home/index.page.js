@@ -11,6 +11,25 @@ import { ICON_FONT, iconChar } from '../../utils/icons'
 const logger = log.getLogger('ha-home')
 logger.log('module load')
 
+/* Robust helpers: native widget calls can throw non-Error objects on some firmwares */
+function errStr(error) {
+  try {
+    return String((error && error.message) || error) + ' | ' + JSON.stringify(error)
+  } catch (e) {
+    return String(error)
+  }
+}
+
+function safeDestroy(w) {
+  if (!w) return
+  try {
+    destroyWidget(w)
+  } catch (e) {
+    logger.log('safeDestroy failed: ' + errStr(e))
+  }
+}
+
+
 const PAGE_W = 480
 const PAGE_H = 480
 const MARGIN = 24
@@ -126,12 +145,12 @@ Page(
         else this.render()
       })
       .catch((error) => {
-        logger.log('GET_HUB failed', error)
+        logger.log('GET_HUB failed: ' + errStr(error))
         // a failed attempt still counts for the refresh gate: retry no sooner
         // than one interval later instead of hammering a dead HA
         this.state.lastRefreshAt = Date.now()
         if (this.state.loadingText) {
-          destroyWidget(this.state.loadingText)
+          safeDestroy(this.state.loadingText)
           this.state.loadingText = null
         }
         createWidget(widget.TEXT, {
@@ -170,9 +189,9 @@ Page(
     try {
       this.renderInner()
     } catch (error) {
-      logger.log('render failed', error)
+      logger.log('render failed: ' + errStr(error))
       if (this.state.loadingText) {
-        destroyWidget(this.state.loadingText)
+        safeDestroy(this.state.loadingText)
         this.state.loadingText = null
       }
       createWidget(widget.TEXT, {
@@ -180,7 +199,7 @@ Page(
         y: px(200),
         w: px(PAGE_W - MARGIN * 2),
         h: px(120),
-        text: 'Render error: ' + ((error && error.message) || error),
+        text: 'Render error: ' + errStr(error),
         text_size: px(22),
         color: 0xe57373,
         align_h: align.CENTER_H,
@@ -192,10 +211,10 @@ Page(
   renderInner() {
     const hub = this.state.hub
     if (!hub) return
-    logger.log('render:start')
+    logger.log('render:start d=' + typeof destroyWidget + ' c=' + typeof createWidget)
     this.state.built = true
     if (this.state.loadingText) {
-      destroyWidget(this.state.loadingText)
+      safeDestroy(this.state.loadingText)
       this.state.loadingText = null
     }
     logger.log('render:loading-removed')
@@ -204,10 +223,14 @@ Page(
     const screens = (config.screens || []).filter((s) => s.enabled)
     const pageCount = 1 + screens.length
 
-    setScrollMode({
-      mode: SCROLL_MODE_SWIPER_HORIZONTAL,
-      options: { width: px(PAGE_W), count: pageCount },
-    })
+    try {
+      setScrollMode({
+        mode: SCROLL_MODE_SWIPER_HORIZONTAL,
+        options: { width: px(PAGE_W), count: pageCount },
+      })
+    } catch (e) {
+      logger.log('setScrollMode failed: ' + errStr(e))
+    }
     logger.log('render:scrollmode')
 
     this.renderHubPage(hub)
@@ -215,18 +238,22 @@ Page(
     screens.forEach((screen, i) => this.renderScreenPage(screen, i + 1, hub))
     logger.log('render:screens')
 
-    createWidget(widget.PAGE_INDICATOR, {
-      x: 0,
-      y: px(PAGE_H - 26),
-      w: px(PAGE_W),
-      h: px(12),
-      align_h: align.CENTER_H,
-      h_space: 8,
-      select_color: 0xffffff,
-      unselect_color: 0x666666,
-      total: pageCount,
-      cur_index: 0,
-    })
+    try {
+      createWidget(widget.PAGE_INDICATOR, {
+        x: 0,
+        y: px(PAGE_H - 26),
+        w: px(PAGE_W),
+        h: px(12),
+        align_h: align.CENTER_H,
+        h_space: 8,
+        select_color: 0xffffff,
+        unselect_color: 0x666666,
+        total: pageCount,
+        cur_index: 0,
+      })
+    } catch (e) {
+      logger.log('indicator failed: ' + errStr(e))
+    }
     logger.log('render:done')
   },
 
@@ -291,7 +318,8 @@ Page(
 
     let y = 120
     enabledAreas.forEach((areaId) => {
-      const name = (hub.areaNames && hub.areaNames[areaId]) || areaId
+      const name =
+        areaId === '__none__' ? gettext('area_none') : (hub.areaNames && hub.areaNames[areaId]) || areaId
       container.createWidget(widget.BUTTON, {
         x: px(MARGIN),
         y: px(y),
