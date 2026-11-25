@@ -107,8 +107,18 @@ npx create-zos@latest module setting     # ekran ustawień w telefonie
 npx create-zos@latest module app-side    # usługa app-side
 ```
 
-CI: GitHub Actions (`.github/workflows/`). `build.yml` buduje pakiet `.zab` i wgrywa artefakt;
-`release.yml` publikuje GitHub Release po otagowaniu `v*.*.*`. Lokalnie artefakt trafia do `dist/`.
+CI: GitHub Actions (`.github/workflows/`). `build.yml` uruchamia się przy push do `main` oraz
+PR i wstrzykuje wersję aplikacji: krótki skrót commitu dla `main` (`scripts/ci-version.js`),
+`pr-<n>` dla PR; wgrywa artefakt `.zab`. `release.yml` uruchamia się dla tagów
+`[0-9]+.[0-9]+.[0-9]+` lub `v*.*.*`, ustawia wersję aplikacji = tag (bez przedniego `v`),
+publikuje GitHub Release z `.zab` i osadza **kod QR instalacji w trybie deweloperskim**:
+wydanie wysyła pakiet do usługi podglądu Zepp przez `scripts/ci-zepp-upload.js`
+(przeużywa `uploadPackage` z zeus-cli; URL
+`https://<host>/custom/tools/app-dial/download/<code>`, ważność ~7 dni) i renderuje go jako
+`qr.png`. Wymaga sekretów repozytorium `ZEUS_APPTOKEN`/`ZEUS_USER_ID`/`ZEUS_CNAME` —
+wartości z `~/.zepp/.zeus` po `npx zeus login`. Bez nich wydanie jest tworzone z adnotacją
+„QR pominięty”. Lokalnie artefakt trafia do `dist/`; lokalne budowania zachowują wersję z
+`app.json`/`package.json` (0.4.0).
 
 ## Struktura
 
@@ -176,5 +186,8 @@ reaguje przez `onSettingsChange` → `discover()` buforuje `ha_data` → zegarka
   Nie próbuj ponownie dodać odpytywania w tle.
 - Cache znajduje się w `settingsStorage` (na telefonie): przetrwa awarię HA, ale jeśli sam
   kanał z telefonem padnie, zegarek nie może go odczytać — strona pokaże błąd połączenia.
+- Repo jest obecnie **prywatne**: linki do zasobów GitHub Release wymagają uwierzytelnienia,
+  więc QR w wydaniu koduje URL usługi podglądu Zepp (działa z aplikacji Zepp niezależnie).
+  Upublicznienie repozytorium umożliwiłoby też bezpośrednie pobieranie `.zab`.
 - `docs/` to migawka; przed decyzjami o API sprawdzaj dokumentację online oraz
   `@zeppos/device-types` (wersje w `node_modules/@zeppos/device-types/index.d.ts`).

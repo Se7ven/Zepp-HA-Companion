@@ -53,8 +53,20 @@ npm run dev       # разработка в симуляторе
 npm run preview   # установка на часы через QR-код (требует zeus login)
 ```
 
-Готовые сборки: [GitHub Actions](https://github.com/Se7ven/Zepp-HA-Companion/actions) /
-[Releases](https://github.com/Se7ven/Zepp-HA-Companion/releases) (теги `v*.*.*`).
+## Релизы и установка в режиме разработчика
+
+CI собирает приложение при каждом пуше в `main` (версия приложения = короткий хеш коммита,
+артефакт в [Actions](https://github.com/Se7ven/Zepp-HA-Companion/actions)) и публикует
+[Release](https://github.com/Se7ven/Zepp-HA-Companion/releases) на каждый тег
+(`0.0.1` или `v0.0.1` — версия приложения равняется тегу).
+
+В описание каждого релиза встраивается **QR-код**: откройте в приложении Zepp режим
+разработчика, отсканируйте код — и часы установят сборку по Wi-Fi/Bluetooth. Ссылка QR
+раздаётся сервисом предпросмотра Zepp и живёт около **7 дней**. Чтобы включить QR,
+добавьте три секрета репозитория — выполните один раз `npx zeus login`, затем скопируйте
+значения из `~/.zepp/.zeus` в **`ZEUS_APPTOKEN`**, **`ZEUS_USER_ID`**, **`ZEUS_CNAME`**
+(Repo → Settings → Secrets and variables → Actions). Без секретов релизы всё равно
+создаются с пометкой, что QR пропущен.
 
 ## Документация
 

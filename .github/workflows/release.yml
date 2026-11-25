@@ -2,38 +2,88 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*.*.*'
-
-permissions:
-  contents: write
+    tags: ['v*.*.*', '[0-9]+.[0-9]+.[0-9]+']
 
 jobs:
   release:
-    name: Build and publish release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ZEUS_APPTOKEN: ${{ secrets.ZEUS_APPTOKEN }}
+      ZEUS_USER_ID: ${{ secrets.ZEUS_USER_ID }}
+      ZEUS_CNAME: ${{ secrets.ZEUS_CNAME }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: 20
+          cache: npm
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build (zeus build)
+      - name: Resolve version from tag
+        id: ver
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Set app version
+        run: node scripts/ci-version.js "${{ steps.ver.outputs.version }}"
+
+      - name: Build
         run: npm run build
 
-      - name: Create GitHub release with .zab package
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Create release with package
         run: |
-          set -euo pipefail
-          gh release create "$GITHUB_REF_NAME" \
+          gh release create "$GITHUB_REF_NAME" dist/*.zab \
             --title "Zepp HA Companion $GITHUB_REF_NAME" \
-            --generate-notes \
-            dist/*.zab
+            --notes "Building ${GITHUB_SHA:0:7}..."
+
+      - name: Upload package to Zepp preview service
+        id: zepp
+        if: env.ZEUS_APPTOKEN != '' && env.ZEUS_CNAME != ''
+        run: |
+          ZAB=$(ls dist/*.zab | head -1)
+          URL=$(node scripts/ci-zepp-upload.js "$ZAB" | tail -1)
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          pip install --quiet qrcode pillow
+          python3 - "$URL" <<'PY'
+          import sys
+          import qrcode
+          qrcode.make(sys.argv[1]).save('qr.png')
+          PY
+
+      - name: Publish release notes with dev-mode QR
+        if: steps.zepp.conclusion == 'success'
+        run: |
+          gh release upload "$GITHUB_REF_NAME" qr.png --clobber
+          cat > body.md <<EOF
+          ## Zepp HA Companion $GITHUB_REF_NAME
+
+          **Install on the watch (developer mode):** open the Zepp App and scan this code
+          (issued by the Zepp preview service, **expires in ~7 days**; the watch must be
+          connected to the phone with the Zepp App logged into the same developer account):
+
+          ![Developer-mode install QR](https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/qr.png)
+
+          - \`.zab\` package: attached to this release (GitHub download requires access to the repo)
+          - Commit: ${GITHUB_SHA:0:7}
+          EOF
+          gh release edit "$GITHUB_REF_NAME" --notes-file body.md
+
+      - name: Publish release notes (QR skipped)
+        if: steps.zepp.conclusion != 'success'
+        run: |
+          cat > body.md <<EOF
+          ## Zepp HA Companion $GITHUB_REF_NAME
+
+          Developer-mode QR is not available: set repository secrets ZEUS_APPTOKEN,
+          ZEUS_USER_ID, ZEUS_CNAME (values from \`~/.zepp/.zeus\` after \`npx zeus login\`)
+          to enable it, then re-run this workflow.
+
+          - \`.zab\` package: attached to this release (GitHub download requires access to the repo)
+          - Commit: ${GITHUB_SHA:0:7}
+          EOF
+          gh release edit "$GITHUB_REF_NAME" --notes-file body.md

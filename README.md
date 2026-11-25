@@ -51,8 +51,20 @@ npm run dev       # development in the simulator
 npm run preview   # install to the watch via QR code (requires zeus login)
 ```
 
-Prebuilt packages: [GitHub Actions](https://github.com/Se7ven/Zepp-HA-Companion/actions) /
-[Releases](https://github.com/Se7ven/Zepp-HA-Companion/releases) (tags `v*.*.*`).
+## Releases & developer-mode installs
+
+CI builds on every push to `main` (app version = short commit hash, artifact in
+[Actions](https://github.com/Se7ven/Zepp-HA-Companion/actions)) and publishes a
+[Release](https://github.com/Se7ven/Zepp-HA-Companion/releases) for every tag
+(`0.0.1` or `v0.0.1` — the app version equals the tag).
+
+Each release notes page embeds a **QR code**: open the Zepp App developer mode, scan it,
+and the watch installs the build over Wi-Fi/Bluetooth. The QR link is served by the Zepp
+preview service and expires in about **7 days**. To enable the QR, add three repository
+secrets — run `npx zeus login` once, then copy the values from `~/.zepp/.zeus` into
+**`ZEUS_APPTOKEN`**, **`ZEUS_USER_ID`**, **`ZEUS_CNAME`** (Repo → Settings → Secrets and
+variables → Actions). Without them releases are still created, with a notice that the QR
+was skipped.
 
 ## Documentation
 

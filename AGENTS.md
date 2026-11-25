@@ -102,8 +102,17 @@ npx create-zos@latest module setting     # phone-side settings screen
 npx create-zos@latest module app-side    # side service
 ```
 
-CI: GitHub Actions (`.github/workflows/`). `build.yml` builds the `.zab` and uploads an artifact;
-`release.yml` publishes a GitHub Release on `v*.*.*` tags. Locally the artifact lands in `dist/`.
+CI: GitHub Actions (`.github/workflows/`). `build.yml` runs on push to `main`/PRs and
+injects the app version: short commit sha on `main` (`scripts/ci-version.js`), `pr-<n>` on
+PRs; uploads the `.zab` artifact. `release.yml` runs on tags `[0-9]+.[0-9]+.[0-9]+` or
+`v*.*.*`, sets app version = tag (without leading `v`), publishes a GitHub Release with the
+`.zab` and embeds a **developer-mode QR**: the release uploads the package to the Zepp
+preview service via `scripts/ci-zepp-upload.js` (reuses zeus-cli's `uploadPackage`; URL
+`https://<host>/custom/tools/app-dial/download/<code>`, ~7-day expiry) and renders it as
+`qr.png`. Needs repo secrets `ZEUS_APPTOKEN`/`ZEUS_USER_ID`/`ZEUS_CNAME` — values from
+`~/.zepp/.zeus` after `npx zeus login`. Without them the release is created with a
+"QR skipped" note. Locally the artifact lands in `dist/`; local builds keep the version from
+`app.json`/`package.json` (0.4.0).
 
 ## Structure
 
@@ -170,5 +179,8 @@ Main data flow: settings app writes `ha_config`/`ha_sync` → side service `onSe
   re-add background polling.
 - The cache lives in `settingsStorage` (on the phone): it survives HA outages, but if the phone
   link itself is down the watch cannot read it — the page then shows a connection error.
+- The repo is **private** right now: GitHub release asset links need auth, so the release QR
+  encodes the Zepp preview-service URL (works from the Zepp App regardless). Making the repo
+  public would also allow direct `.zab` downloads.
 - `docs/` is a snapshot; before making API decisions, cross-check online docs and
   `@zeppos/device-types` (versions in `node_modules/@zeppos/device-types/index.d.ts`).
