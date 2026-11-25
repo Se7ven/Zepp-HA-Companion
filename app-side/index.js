@@ -222,6 +222,20 @@ AppSideService(
     },
 
     onRequest(req, res) {
+      // never let a handler exception kill the service silently: reply an error instead
+      try {
+        this.handleRequest(req, res)
+      } catch (error) {
+        logger.log('handler crash', error)
+        try {
+          reply(res, { error: 'HANDLER_CRASH: ' + ((error && error.message) || error) })
+        } catch (e) {
+          logger.log('reply failed', e)
+        }
+      }
+    },
+
+    handleRequest(req, res) {
       const params = (req && req.params) || {}
       logger.log('onRequest', req && req.method)
       switch (req.method) {
@@ -380,10 +394,14 @@ AppSideService(
     },
 
     onSettingsChange({ key }) {
-      if (key === STORAGE_KEYS.HA_SYNC) {
-        discover(this)
-      } else if (key === STORAGE_KEYS.HA_CONFIG) {
-        this.call({ method: 'config.changed', params: {} })
+      try {
+        if (key === STORAGE_KEYS.HA_SYNC) {
+          discover(this)
+        } else if (key === STORAGE_KEYS.HA_CONFIG) {
+          this.call({ method: 'config.changed', params: {} })
+        }
+      } catch (error) {
+        logger.log('onSettingsChange crash', error)
       }
     },
 

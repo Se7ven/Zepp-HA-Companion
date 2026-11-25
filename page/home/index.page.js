@@ -158,6 +158,29 @@ BasePage({
   /* ----------------------------- rendering ----------------------------- */
 
   render() {
+    try {
+      this.renderInner()
+    } catch (error) {
+      logger.log('render failed', error)
+      if (this.state.loadingText) {
+        destroyWidget(this.state.loadingText)
+        this.state.loadingText = null
+      }
+      createWidget(widget.TEXT, {
+        x: px(MARGIN),
+        y: px(200),
+        w: px(PAGE_W - MARGIN * 2),
+        h: px(120),
+        text: 'Render error: ' + ((error && error.message) || error),
+        text_size: px(22),
+        color: 0xe57373,
+        align_h: align.CENTER_H,
+        text_style: text_style.WRAP,
+      })
+    }
+  },
+
+  renderInner() {
     const hub = this.state.hub
     if (!hub) return
     this.state.built = true
