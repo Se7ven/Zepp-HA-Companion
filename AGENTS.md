@@ -103,11 +103,11 @@ npx create-zos@latest module app-side    # side service
 ```
 
 CI: GitHub Actions (`.github/workflows/`). `build.yml` runs on push to `main`/PRs and
-injects the app version: short commit sha on `main` (`scripts/ci-version.js`), `pr-<n>` on
+injects the app version: short commit sha on `main` (`scripts/ci-version.cjs`), `pr-<n>` on
 PRs; uploads the `.zab` artifact. `release.yml` runs on tags `[0-9]+.[0-9]+.[0-9]+` or
 `v*.*.*`, sets app version = tag (without leading `v`), publishes a GitHub Release with the
 `.zab` and embeds a **developer-mode QR**: the release uploads the package to the Zepp
-preview service via `scripts/ci-zepp-upload.js` (reuses zeus-cli's `uploadPackage`; URL
+preview service via `scripts/ci-zepp-upload.cjs` (reuses zeus-cli's `uploadPackage`; URL
 `https://<host>/custom/tools/app-dial/download/<code>`, ~7-day expiry) and renders it as
 `qr.png`. Needs repo secrets `ZEUS_APPTOKEN`/`ZEUS_USER_ID`/`ZEUS_CNAME` — values from
 `~/.zepp/.zeus` after `npx zeus login`. Without them the release is created with a

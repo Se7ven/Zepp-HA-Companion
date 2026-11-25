@@ -108,11 +108,11 @@ npx create-zos@latest module app-side    # usługa app-side
 ```
 
 CI: GitHub Actions (`.github/workflows/`). `build.yml` uruchamia się przy push do `main` oraz
-PR i wstrzykuje wersję aplikacji: krótki skrót commitu dla `main` (`scripts/ci-version.js`),
+PR i wstrzykuje wersję aplikacji: krótki skrót commitu dla `main` (`scripts/ci-version.cjs`),
 `pr-<n>` dla PR; wgrywa artefakt `.zab`. `release.yml` uruchamia się dla tagów
 `[0-9]+.[0-9]+.[0-9]+` lub `v*.*.*`, ustawia wersję aplikacji = tag (bez przedniego `v`),
 publikuje GitHub Release z `.zab` i osadza **kod QR instalacji w trybie deweloperskim**:
-wydanie wysyła pakiet do usługi podglądu Zepp przez `scripts/ci-zepp-upload.js`
+wydanie wysyła pakiet do usługi podglądu Zepp przez `scripts/ci-zepp-upload.cjs`
 (przeużywa `uploadPackage` z zeus-cli; URL
 `https://<host>/custom/tools/app-dial/download/<code>`, ważność ~7 dni) i renderuje go jako
 `qr.png`. Wymaga sekretów repozytorium `ZEUS_APPTOKEN`/`ZEUS_USER_ID`/`ZEUS_CNAME` —

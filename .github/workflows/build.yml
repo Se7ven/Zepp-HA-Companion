@@ -22,13 +22,13 @@ jobs:
 
       - name: Set app version (main push -> commit hash)
         if: github.event_name == 'push'
-        run: node scripts/ci-version.js "${GITHUB_SHA::7}"
+        run: node scripts/ci-version.cjs "${GITHUB_SHA::7}"
         env:
           GITHUB_SHA: ${{ github.sha }}
 
       - name: Set app version (pull request)
         if: github.event_name == 'pull_request'
-        run: node scripts/ci-version.js "pr-${{ github.event.number }}"
+        run: node scripts/ci-version.cjs "pr-${{ github.event.number }}"
 
       - name: Build
         run: npm run build
