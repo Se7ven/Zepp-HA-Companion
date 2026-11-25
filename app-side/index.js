@@ -1,10 +1,19 @@
-import { log } from '@zos/utils'
 import { BaseSideService, settingsLib } from '@zeppos/zml/base-side'
 import { STORAGE_KEYS, defaultConfig } from '../utils/config/constants'
 import { splitEntity, isOn, resolveService } from '../utils/ha'
 
-const logger = log.getLogger('ha-side')
-logger.log('module load')
+// app-side (phone runtime) does not reliably bundle @zos/utils (rollup warns
+// "could not be resolved"), so log through console.log like the official
+// fetch-api sample does.
+function sideLog() {
+  try {
+    console.log.apply(console, ['[ha-side]'].concat(Array.prototype.slice.call(arguments)))
+  } catch (e) {
+    // logging must never break the service
+  }
+}
+const logger = { log: sideLog, error: sideLog, debug: sideLog }
+sideLog('module load')
 
 /* ------------------------------------------------------------------ */
 /* settingsStorage helpers (phone-side persistent storage, zml wrapper) */

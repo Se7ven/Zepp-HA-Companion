@@ -61,6 +61,7 @@ Page(
 
   build() {
     try {
+      logger.log('build:start')
       this.state.loadingText = createWidget(widget.TEXT, {
         x: 0,
         y: px(220),
@@ -71,6 +72,7 @@ Page(
         color: COLOR_TEXT,
         align_h: align.CENTER_H,
       })
+      logger.log('build:loading-shown')
       this.refresh()
       this.startAutoRefresh()
     } catch (e) {
@@ -114,6 +116,11 @@ Page(
     this.state.lastRefreshAt = Date.now()
     return this.request({ method: 'GET_HUB' })
       .then((data) => {
+        logger.log(
+          'hub response',
+          (data && data.error) || 'ok',
+          'states=' + ((data && data.states && data.states.length) || 0)
+        )
         this.state.hub = data
         if (this.state.built) this.paintLiveStates(data)
         else this.render()
@@ -185,11 +192,13 @@ Page(
   renderInner() {
     const hub = this.state.hub
     if (!hub) return
+    logger.log('render:start')
     this.state.built = true
     if (this.state.loadingText) {
       destroyWidget(this.state.loadingText)
       this.state.loadingText = null
     }
+    logger.log('render:loading-removed')
 
     const config = hub.config || { screens: [] }
     const screens = (config.screens || []).filter((s) => s.enabled)
@@ -199,9 +208,12 @@ Page(
       mode: SCROLL_MODE_SWIPER_HORIZONTAL,
       options: { width: px(PAGE_W), count: pageCount },
     })
+    logger.log('render:scrollmode')
 
     this.renderHubPage(hub)
+    logger.log('render:hub')
     screens.forEach((screen, i) => this.renderScreenPage(screen, i + 1, hub))
+    logger.log('render:screens')
 
     createWidget(widget.PAGE_INDICATOR, {
       x: 0,
@@ -210,12 +222,12 @@ Page(
       h: px(12),
       align_h: align.CENTER_H,
       h_space: 8,
-      use_color: true,
       select_color: 0xffffff,
       unselect_color: 0x666666,
-      element_height: px(12),
-      element_radius: px(6),
+      total: pageCount,
+      cur_index: 0,
     })
+    logger.log('render:done')
   },
 
   newPageContainer(pageIndex) {
@@ -231,6 +243,7 @@ Page(
 
   renderHubPage(hub) {
     const container = this.newPageContainer(0)
+    logger.log('hub:container')
     const st = this.computeStatus(hub)
 
     container.createWidget(widget.TEXT, {
@@ -243,6 +256,7 @@ Page(
       color: COLOR_TEXT,
       align_h: align.CENTER_H,
     })
+    logger.log('hub:title')
     this.state.statusRef = container.createWidget(widget.TEXT, {
       x: px(MARGIN),
       y: px(64),
@@ -254,6 +268,7 @@ Page(
       align_h: align.CENTER_H,
       text_style: text_style.ELLIPSIS,
     })
+    logger.log('hub:status')
 
     const enabledAreas = Object.keys((hub.config && hub.config.areas) || {}).filter(
       (id) => (hub.config.areas[id] || {}).enabled
@@ -270,6 +285,7 @@ Page(
         align_h: align.CENTER_H,
         text_style: text_style.WRAP,
       })
+      logger.log('hub:hint')
       return
     }
 
@@ -300,6 +316,7 @@ Page(
   },
 
   renderScreenPage(screen, pageIndex, hub) {
+    logger.log('screen:start ' + pageIndex)
     const container = this.newPageContainer(pageIndex)
     container.createWidget(widget.TEXT, {
       x: 0,
