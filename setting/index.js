@@ -9,6 +9,7 @@ import {
   SLOT_COUNT,
   HA_URL_EXAMPLE,
 } from '../utils/config/constants'
+import { ICON_CHOICES } from '../utils/icons'
 
 /*
  * Settings App (phone side, runs inside the Zepp App).
@@ -37,6 +38,12 @@ function slotOptions() {
   for (let i = 0; i < SLOT_COUNT; i++) {
     out.push({ name: gettext('slot') + ' ' + (i + 1), value: String(i) })
   }
+  return out
+}
+
+function iconOptions() {
+  const out = [{ name: gettext('icon_none'), value: '' }]
+  ICON_CHOICES.forEach((n) => out.push({ name: n, value: n }))
   return out
 }
 
@@ -330,6 +337,7 @@ AppSettingsPage({
         shape: 'round',
         size: 's',
         slot: 0,
+        icon: '',
       },
       existing || {}
     )
@@ -425,6 +433,12 @@ AppSettingsPage({
             options: slotOptions(),
             value: String(edit.slot),
             onChange: (v) => this.setEdit({ slot: parseInt(v, 10) }),
+          }),
+          Select({
+            label: gettext('icon'),
+            options: iconOptions(),
+            value: edit.icon || '',
+            onChange: (v) => this.setEdit({ icon: v }),
           }),
         ].concat(toggleColors)
       ),

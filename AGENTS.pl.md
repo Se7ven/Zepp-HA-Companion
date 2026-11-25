@@ -39,6 +39,9 @@ ze smartwatchami Amazfit działającymi pod systemem Zepp OS.
 | Generator modułów | https://github.com/zepp-health/create-zos |
 
 Dokumentacja w `docs/` jest na licencji Apache-2.0 (patrz `docs/.LICENSE.txt`), używana tylko lokalnie.
+Czcionka ikon na zegarek (`assets/*/fonts/ha-icons.ttf`) to podzbiór Material Design Icons 7.4.47
+(Pictogrammers), SIL OFL 1.1 — atrybucja znajduje się w README; zachowuj uwagi dotyczące
+generowania w nagłówku `utils/icons.js` przy regeneracji czcionki.
 
 ## Architektura Zepp OS (trzeba rozumieć)
 
@@ -76,6 +79,14 @@ Dokumentacja w `docs/` jest na licencji Apache-2.0 (patrz `docs/.LICENSE.txt`), 
   wymaga `API_LEVEL` 5.0 i jest **niedostępny** (target to 4.0): przewijane listy budujemy
   z wierszy `BUTTON` wewnątrz `VIEW_CONTAINER(scroll_enable: 1)`. Kolory stanów przycisków
   pochodzą z ustawień (`colorOn`/`colorOff`).
+- **Ikony:** `assets/*/fonts/ha-icons.ttf` — podzbiór Material Design Icons (tego samego
+  zestawu, którego używa Home Assistant), zemapowanego do BMP PUA `U+E000+`, ponieważ renderer
+  zegarka/QuickJS obsługują `String.fromCharCode` tylko w zakresie BMP. Widgety wybierają ją
+  parametrem `font: 'fonts/ha-icons.ttf'` (ścieżka względem katalogu assets celu; zeus pakuje
+  katalog `fonts/` automatycznie). Mapowania i lista wyboru: `utils/icons.js`
+  (`ICON_MAP`/`ICON_CHOICES`/`DOMAIN_ICON`). Tekstu nie da się „wmontować” w BUTTON, więc
+  ikona i etykieta to osobne widgety TEXT nad BUTTON; każda warstwa przekazuje dotknięcia,
+  a strażnik 500 ms odrzuca duplikaty.
 
 ## Polecenia
 
@@ -115,8 +126,9 @@ setting/
   i18n/                 # tłumaczenia UI ustawień (en-US.po, ru-RU.po)
 utils/
   ha.js                 # pomocniki HA: mapa serwisów, stan on/off, parsowanie id
+  icons.js              # mapy czcionki ikon (ICON_MAP/ICON_CHOICES/DOMAIN_ICON), nagłówek OFL
   config/constants.js   # klucze pamięci (STORAGE_KEYS), wartości domyślne, paleta kolorów
-assets/common.r|common.s   # zasoby per kształt ekranu (r = okrągły 480)
+assets/common.r|common.s   # zasoby per kształt ekranu (r = okrągły 480); fonts/ha-icons.ttf (podzbiór MDI, OFL-1.1)
 docs/                   # LOKALNA KOPIA dokumentacji Zepp OS, w gitignore
 scripts/                # skrypty pomocnicze
 ```

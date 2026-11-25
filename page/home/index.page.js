@@ -1,4 +1,4 @@
-import { createWidget, widget, align, text_style, prop, destroyWidget } from '@zos/ui'
+import { createWidget, widget, align, text_style, prop, destroyWidget, event } from '@zos/ui'
 import { px } from '@zos/utils'
 import { gettext } from 'i18n'
 import { setScrollMode, SCROLL_MODE_SWIPER_HORIZONTAL } from '@zos/page'
@@ -6,6 +6,7 @@ import { push, replace } from '@zos/router'
 import { log } from '@zos/utils'
 import { BasePage } from '@zeppos/zml/base-page'
 import { REFRESH_INTERVAL_MS } from '../../utils/config/constants'
+import { ICON_FONT, iconChar } from '../../utils/icons'
 
 const logger = log.getLogger('ha-home')
 
@@ -300,7 +301,18 @@ BasePage({
         cfg: btn,
         on: st ? !!st.on : false,
         widget: null,
+        lastFire: 0,
       }
+      // overlays may or may not pass touches through to the button depending on
+      // the firmware build, so every tap target calls fireOnce and the guard
+      // debounces duplicate deliveries of the same tap
+      const fireOnce = () => {
+        const now = Date.now()
+        if (now - ref.lastFire < 500) return
+        ref.lastFire = now
+        this.fireButton(ref)
+      }
+      const icon = iconChar(btn.icon)
       const normal = hexColor(ref.on ? btn.colorOn : btn.colorOff, '#546E7A')
       ref.widget = container.createWidget(widget.BUTTON, {
         x: px(x),
@@ -310,12 +322,41 @@ BasePage({
         radius: radiusFor(btn.shape, w, CELL_H),
         normal_color: normal,
         press_color: dim(normal),
-        text: btn.label || (st && st.n) || btn.entity,
+        text: icon ? '' : btn.label || (st && st.n) || btn.entity,
         text_size: px(24),
         color: COLOR_TEXT,
         text_w: px(w - 16),
-        click_func: () => this.fireButton(ref),
+        click_func: fireOnce,
       })
+      if (icon) {
+        const hasLabel = !!btn.label
+        const iconText = container.createWidget(widget.TEXT, {
+          x: px(x),
+          y: px(y + (hasLabel ? 4 : 22)),
+          w: px(w),
+          h: px(hasLabel ? 52 : 56),
+          text: icon,
+          text_size: px(hasLabel ? 40 : 44),
+          color: COLOR_TEXT,
+          align_h: align.CENTER_H,
+          font: ICON_FONT,
+        })
+        iconText.addEventListener(event.CLICK_DOWN, fireOnce)
+        if (hasLabel) {
+          const labelText = container.createWidget(widget.TEXT, {
+            x: px(x + 4),
+            y: px(y + 60),
+            w: px(w - 8),
+            h: px(32),
+            text: btn.label,
+            text_size: px(20),
+            color: COLOR_TEXT,
+            align_h: align.CENTER_H,
+            text_style: text_style.ELLIPSIS,
+          })
+          labelText.addEventListener(event.CLICK_DOWN, fireOnce)
+        }
+      }
       this.state.buttonWidgets.push(ref)
     })
   },

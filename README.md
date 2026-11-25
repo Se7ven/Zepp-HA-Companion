@@ -22,6 +22,9 @@ with **Amazfit** smartwatches running **Zepp OS**.
 - **Phone-side configuration** — inside the official Zepp App (App Settings): connection
   (HA URL + token), entity discovery, area & entity toggles, and the widget-screen editor.
 
+- **Material Design Icons** — the very same icon set Home Assistant uses: every entity row
+  in the area lists shows its domain icon, and each widget button can be given one of 70
+  icons from the settings editor.
 - **Works offline / degrades gracefully** — the last known states are cached; when Home
   Assistant is unreachable the watch shows cached data (with its age) instead of an error.
 
@@ -59,3 +62,7 @@ Developer notes, architecture and conventions: [AGENTS.md](AGENTS.md)
 ## License
 
 MIT. The offline copy of Zepp OS documentation in `docs/` (not committed) is distributed under Apache-2.0.
+
+The embedded watch UI font (`assets/*/fonts/ha-icons.ttf`) is a subset of
+[Material Design Icons](https://pictogrammers.com/library/mdi/) v7.4.47 by Pictogrammers,
+used under the [SIL Open Font License 1.1](https://scripts.sil.org/OFL).

@@ -22,6 +22,9 @@ ze smartwatchami **Amazfit** działającymi pod systemem **Zepp OS**.
 - **Konfiguracja z telefonu** — w oficjalnej aplikacji Zepp (Ustawienia aplikacji): połączenie
   (URL HA + token), wykrywanie encji, przełączniki obszarów i encji oraz edytor ekranów widżetów.
 
+- **Material Design Icons** — dokładnie ten sam zestaw ikon, którego używa Home Assistant:
+  każdy wiersz na listach obszarów pokazuje ikonę domeny, a każdemu przyciskowi widżetu można
+  przypisać jedną z 70 ikon w edytorze ustawień.
 - **Działa offline / łagodna degradacja** — ostatnie znane stany są buforowane; gdy
   Home Assistant jest niedostępny, zegarek pokazuje dane z cache (z ich wiekiem) zamiast błędu.
 
@@ -59,3 +62,7 @@ Uwagi dla programistów, architektura i konwencje: [AGENTS.pl.md](AGENTS.pl.md)
 ## Licencja
 
 MIT. Lokalna kopia dokumentacji Zepp OS w `docs/` (nie commitowana) rozpowszechniana na licencji Apache-2.0.
+
+Osadzona czcionka UI zegarka (`assets/*/fonts/ha-icons.ttf`) to podzbiór
+[Material Design Icons](https://pictogrammers.com/library/mdi/) v7.4.47 autorstwa Pictogrammers,
+używany na licencji [SIL Open Font License 1.1](https://scripts.sil.org/OFL).

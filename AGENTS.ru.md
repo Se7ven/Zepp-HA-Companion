@@ -38,6 +38,9 @@
 | Скаффолдер модулей | https://github.com/zepp-health/create-zos |
 
 Документация в `docs/` лицензирована Apache-2.0 (см. `docs/.LICENSE.txt`), используется только локально.
+Шрифт иконок часов (`assets/*/fonts/ha-icons.ttf`) — подмножество Material Design Icons 7.4.47
+(Pictogrammers), SIL OFL 1.1; атрибуция — в README, заметки о генерации — в шапке `utils/icons.js`
+(сохранять их при регенерации шрифта).
 
 ## Архитектура Zepp OS (важно понимать)
 
@@ -74,6 +77,14 @@
   `API_LEVEL` 5.0 и **недоступен** (таргет — 4.0): прокручиваемые списки собираются из
   строк `BUTTON` внутри `VIEW_CONTAINER(scroll_enable: 1)`. Цвета состояний кнопок берутся
   из настроек (`colorOn`/`colorOff`).
+- **Иконки:** `assets/*/fonts/ha-icons.ttf` — подмножество Material Design Icons (того самого
+  набора, что использует Home Assistant), перемапленного в BMP PUA `U+E000+`, потому что
+  рендерер часов/QuickJS работают с `String.fromCharCode` только в пределах BMP. Виджеты
+  подключают его параметром `font: 'fonts/ha-icons.ttf'` (путь относительно каталога assets-цели;
+  zeus пакует каталог `fonts/` автоматически). Соответствия и список пикера: `utils/icons.js`
+  (`ICON_MAP`/`ICON_CHOICES`/`DOMAIN_ICON`). Текст нельзя «привить» к BUTTON, поэтому иконка
+  и подпись — отдельные TEXT-виджеты поверх BUTTON; каждый слой прокидывает тапы, а защитный
+  интервал 500 мс гасит дубли.
 
 ## Команды
 
@@ -113,8 +124,9 @@ setting/
   i18n/                 # переводы UI настроек (en-US.po, ru-RU.po)
 utils/
   ha.js                 # хелперы HA: карта сервисов, состояние on/off, разбор id
+  icons.js              # карты иконок шрифта (ICON_MAP/ICON_CHOICES/DOMAIN_ICON), шапка OFL
   config/constants.js   # ключи хранилища (STORAGE_KEYS), дефолты, палитра цветов
-assets/common.r|common.s   # ресурсы под форматы экранов (r - круглый 480)
+assets/common.r|common.s   # ресурсы под форматы экранов (r - круглый 480); fonts/ha-icons.ttf (подмножество MDI, OFL-1.1)
 docs/                   # ОФФЛАЙН-КОПИЯ доков Zepp OS, в gitignore
 scripts/                # служебные скрипты
 ```

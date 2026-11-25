@@ -1,10 +1,11 @@
-import { createWidget, widget, align, text_style, prop, destroyWidget } from '@zos/ui'
+import { createWidget, widget, align, text_style, prop, destroyWidget, event } from '@zos/ui'
 import { px } from '@zos/utils'
 import { gettext } from 'i18n'
 import { log } from '@zos/utils'
 import { BasePage } from '@zeppos/zml/base-page'
 import { splitEntity, isActionable } from '../../utils/ha'
 import { REFRESH_INTERVAL_MS } from '../../utils/config/constants'
+import { ICON_FONT, iconChar, DOMAIN_ICON } from '../../utils/icons'
 
 const logger = log.getLogger('ha-area')
 
@@ -211,14 +212,18 @@ BasePage({
             const actionable = isActionable(e.e)
             const ref = {
               widget: null,
+              iconW: null,
+              textW: null,
+              domain,
               entity: e.e,
               name: e.n,
               state: e.s,
               on: !!e.on,
               actionable,
+              lastFire: 0,
               y,
             }
-            ref.widget = this.add(this.createRow(ref, y))
+            this.createRow(ref, y)
             this.state.rows.push(ref)
             y += ROW_H + GAP
           })
@@ -227,22 +232,66 @@ BasePage({
     this.add(createWidget(widget.PAGE_SCROLLBAR, {}))
   },
 
+  // Row = borderless BUTTON + icon TEXT + label TEXT overlays. Buttons cannot
+  // offset their built-in text, and the icon font has no latin glyphs, so the
+  // label lives in its own TEXT widget with a controlled x. Overlays forward
+  // taps too; the guard debounces duplicates if touches reach both layers.
   createRow(ref, y) {
     const color = ref.actionable ? (ref.on ? COLOR_ON : COLOR_OFF) : 0x263238
-    return createWidget(widget.BUTTON, {
-      x: px(MARGIN),
-      y: px(y),
-      w: px(PAGE_W - MARGIN * 2),
-      h: px(ROW_H),
-      radius: px(18),
-      normal_color: color,
-      press_color: dim(color),
-      text: ref.name + '  ·  ' + ref.state,
-      text_size: px(22),
-      color: COLOR_TEXT,
-      text_w: px(PAGE_W - MARGIN * 2 - 24),
-      click_func: ref.actionable ? () => this.fire(ref) : () => undefined,
-    })
+    const fireOnce = () => {
+      const now = Date.now()
+      if (now - ref.lastFire < 500) return
+      ref.lastFire = now
+      if (ref.actionable) this.fire(ref)
+    }
+    ref.widget = this.add(
+      createWidget(widget.BUTTON, {
+        x: px(MARGIN),
+        y: px(y),
+        w: px(PAGE_W - MARGIN * 2),
+        h: px(ROW_H),
+        radius: px(18),
+        normal_color: color,
+        press_color: dim(color),
+        text: '',
+        click_func: fireOnce,
+      })
+    )
+    const glyph = iconChar(DOMAIN_ICON[ref.domain] || DOMAIN_ICON.default)
+    let textX = MARGIN + 16
+    if (glyph) {
+      ref.iconW = this.add(
+        createWidget(widget.TEXT, {
+          x: px(MARGIN + 6),
+          y: px(y + (ROW_H - 48) / 2),
+          w: px(52),
+          h: px(48),
+          text: glyph,
+          text_size: px(34),
+          color: ref.actionable ? COLOR_TEXT : COLOR_SUBTLE,
+          align_h: align.CENTER_H,
+          align_v: align.CENTER_V,
+          font: ICON_FONT,
+        })
+      )
+      ref.iconW.addEventListener(event.CLICK_DOWN, fireOnce)
+      textX = MARGIN + 66
+    }
+    ref.textW = this.add(
+      createWidget(widget.TEXT, {
+        x: px(textX),
+        y: px(y),
+        w: px(PAGE_W - MARGIN * 2 - textX - 12),
+        h: px(ROW_H),
+        text: ref.name + '  ·  ' + ref.state,
+        text_size: px(22),
+        color: COLOR_TEXT,
+        align_h: align.LEFT,
+        align_v: align.CENTER_V,
+        text_style: text_style.ELLIPSIS,
+      })
+    )
+    ref.textW.addEventListener(event.CLICK_DOWN, fireOnce)
   },
 
   repaintRow(ref) {
@@ -255,8 +304,12 @@ BasePage({
       radius: px(18),
       normal_color: color,
       press_color: dim(color),
-      text: ref.name + '  ·  ' + (ref.state || (ref.on ? gettext('state_on') : gettext('state_off'))),
     })
+    if (ref.textW) {
+      ref.textW.setProperty(prop.MORE, {
+        text: ref.name + '  ·  ' + (ref.state || (ref.on ? gettext('state_on') : gettext('state_off'))),
+      })
+    }
   },
 
   fire(ref) {

@@ -38,6 +38,9 @@ with Amazfit smartwatches running Zepp OS.
 | Module scaffolder | https://github.com/zepp-health/create-zos |
 
 Docs in `docs/` are Apache-2.0 licensed (see `docs/.LICENSE.txt`), used locally only.
+The watch icon font (`assets/*/fonts/ha-icons.ttf`) is a subset of Material Design Icons 7.4.47
+(Pictogrammers), SIL OFL 1.1 — attribution lives in the README; keep the generation notes in
+the `utils/icons.js` header when regenerating the font.
 
 ## Zepp OS Architecture (must understand)
 
@@ -72,6 +75,13 @@ Docs in `docs/` are Apache-2.0 licensed (see `docs/.LICENSE.txt`), used locally 
   exactly). `LIST_VIEW` requires `API_LEVEL` 5.0 and is **unavailable** (we target 4.0):
   scrollable lists are built from `BUTTON` rows inside a `VIEW_CONTAINER(scroll_enable: 1)`.
   Button state colors come from the settings (`colorOn`/`colorOff`).
+- **Icons:** `assets/*/fonts/ha-icons.ttf` — subset of Material Design Icons (the icon set
+  Home Assistant itself uses), remapped to BMP PUA `U+E000+` because the watch renderer/QuickJS
+  only handle `String.fromCharCode` BMP characters. Widgets select it via `font: 'fonts/ha-icons.ttf'`
+  (path relative to the assets target dir; zeus packages the `fonts/` folder automatically).
+  Mappings and the picker list: `utils/icons.js` (`ICON_MAP`/`ICON_CHOICES`/`DOMAIN_ICON`).
+  A TEXT overlay cannot be styled into a BUTTON, so icon+label are separate TEXT widgets on
+  top of the BUTTON; every layer forwards taps and a 500 ms guard debounces duplicates.
 
 ## Commands
 
@@ -111,8 +121,9 @@ setting/
   i18n/                 # settings UI translations (en-US.po, ru-RU.po)
 utils/
   ha.js                 # HA helpers: service map, on/off state, id parsing
+  icons.js              # icon font maps (ICON_MAP/ICON_CHOICES/DOMAIN_ICON), OFL header
   config/constants.js   # storage keys (STORAGE_KEYS), defaults, color palette
-assets/common.r|common.s   # resources per screen shape (r = round 480)
+assets/common.r|common.s   # resources per screen shape (r = round 480); fonts/ha-icons.ttf (MDI subset, OFL-1.1)
 docs/                   # OFFLINE COPY of Zepp OS docs, gitignored
 scripts/                # utility scripts
 ```
