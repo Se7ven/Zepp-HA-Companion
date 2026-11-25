@@ -31,6 +31,12 @@ msgstr "开"
 msgid "state_off"
 msgstr "关"
 
+msgid "cached_label"
+msgstr "已缓存数据"
+
+msgid "min_abbrev"
+msgstr "分钟"
+
 msgid "domain_light"
 msgstr "灯光"
 

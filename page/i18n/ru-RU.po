@@ -31,6 +31,12 @@ msgstr "вкл"
 msgid "state_off"
 msgstr "выкл"
 
+msgid "cached_label"
+msgstr "Данные из кэша"
+
+msgid "min_abbrev"
+msgstr "мин"
+
 msgid "domain_light"
 msgstr "Свет"
 

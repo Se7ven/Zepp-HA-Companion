@@ -31,6 +31,12 @@ msgstr "on"
 msgid "state_off"
 msgstr "off"
 
+msgid "cached_label"
+msgstr "Cached data"
+
+msgid "min_abbrev"
+msgstr "min"
+
 msgid "domain_light"
 msgstr "Lights"
 

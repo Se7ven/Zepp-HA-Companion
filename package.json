@@ -1,6 +1,6 @@
 {
   "name": "zepp-ha-companion",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Home Assistant companion app for Amazfit smartwatches running Zepp OS (target: Amazfit Balance 3)",
   "main": "app.js",
   "scripts": {

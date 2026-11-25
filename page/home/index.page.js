@@ -5,7 +5,7 @@ import { setScrollMode, SCROLL_MODE_SWIPER_HORIZONTAL } from '@zos/page'
 import { push, replace } from '@zos/router'
 import { log } from '@zos/utils'
 import { BasePage } from '@zeppos/zml/base-page'
-import { PALETTE } from '../../utils/config/constants'
+import { REFRESH_INTERVAL_MS } from '../../utils/config/constants'
 
 const logger = log.getLogger('ha-home')
 
@@ -48,6 +48,8 @@ BasePage({
   state: {
     hub: null,
     buttonWidgets: [], // [{ widget, cfg, on }]
+    built: false,
+    refreshTimer: null,
   },
 
   onInit() {
@@ -66,16 +68,42 @@ BasePage({
       align_h: align.CENTER_H,
     })
     this.refresh()
+    this.startAutoRefresh()
+  },
+
+  /* Battery policy: refresh at most once per REFRESH_INTERVAL_MS while open;
+     Zepp OS forbids background network, so this foreground timer is the only
+     periodic refresh. Screen off / app hidden -> no timer cost anyway. */
+  startAutoRefresh() {
+    if (this.state.refreshTimer !== null) return
+    this.state.refreshTimer = setInterval(() => {
+      const hub = this.state.hub
+      if (!hub) return
+      const age = Date.now() - (this.state.lastRefreshAt || 0)
+      if (age >= REFRESH_INTERVAL_MS) this.refresh()
+    }, 60000)
+  },
+
+  stopAutoRefresh() {
+    if (this.state.refreshTimer !== null) {
+      clearInterval(this.state.refreshTimer)
+      this.state.refreshTimer = null
+    }
   },
 
   refresh() {
+    this.state.lastRefreshAt = Date.now()
     return this.request({ method: 'GET_HUB' })
       .then((data) => {
         this.state.hub = data
-        this.render()
+        if (this.state.built) this.paintLiveStates(data)
+        else this.render()
       })
       .catch((error) => {
         logger.log('GET_HUB failed', error)
+        // a failed attempt still counts for the refresh gate: retry no sooner
+        // than one interval later instead of hammering a dead HA
+        this.state.lastRefreshAt = Date.now()
         if (this.state.loadingText) {
           destroyWidget(this.state.loadingText)
           this.state.loadingText = null
@@ -94,11 +122,28 @@ BasePage({
       })
   },
 
+  // After the swiper exists, a refresh only repaints button colors + status
+  // text in place (re-rendering would tear down widgets mid-swipe).
+  paintLiveStates(hub) {
+    const statesById = {}
+    ;(hub.states || []).forEach((s) => (statesById[s.e] = s))
+    this.state.buttonWidgets.forEach((ref) => {
+      const st = statesById[ref.cfg.entity]
+      const on = st ? !!st.on : ref.on
+      if (on !== ref.on) {
+        ref.on = on
+        this.repaintButton(ref)
+      }
+    })
+    this.updateStatusLine(hub)
+  },
+
   /* ----------------------------- rendering ----------------------------- */
 
   render() {
     const hub = this.state.hub
     if (!hub) return
+    this.state.built = true
     if (this.state.loadingText) {
       destroyWidget(this.state.loadingText)
       this.state.loadingText = null
@@ -144,15 +189,7 @@ BasePage({
 
   renderHubPage(hub) {
     const container = this.newPageContainer(0)
-    const status = hub.status
-    let statusText = gettext('not_configured')
-    let statusColor = 0xe57373
-    if (status && status.ok) {
-      statusText = gettext('connected') + ' v' + (status.version || '?')
-      statusColor = 0x81c784
-    } else if (status && status.message) {
-      statusText = gettext('error_connection') + ': ' + status.message
-    }
+    const st = this.computeStatus(hub)
 
     container.createWidget(widget.TEXT, {
       x: 0,
@@ -164,14 +201,14 @@ BasePage({
       color: COLOR_TEXT,
       align_h: align.CENTER_H,
     })
-    container.createWidget(widget.TEXT, {
+    this.state.statusRef = container.createWidget(widget.TEXT, {
       x: px(MARGIN),
       y: px(64),
       w: px(PAGE_W - MARGIN * 2),
       h: px(32),
-      text: statusText,
+      text: st.text,
       text_size: px(20),
-      color: statusColor,
+      color: st.color,
       align_h: align.CENTER_H,
       text_style: text_style.ELLIPSIS,
     })
@@ -283,6 +320,30 @@ BasePage({
     })
   },
 
+  computeStatus(hub) {
+    if (hub.cached) {
+      const mins = Math.max(1, Math.round((hub.age || 0) / 60000))
+      return {
+        text: gettext('cached_label') + ' · ' + mins + ' ' + gettext('min_abbrev'),
+        color: 0xffb74d,
+      }
+    }
+    const status = hub.status
+    if (status && status.ok) {
+      return { text: gettext('connected') + ' v' + (status.version || '?'), color: 0x81c784 }
+    }
+    if (status && status.message) {
+      return { text: gettext('error_connection') + ': ' + status.message, color: 0xe57373 }
+    }
+    return { text: gettext('not_configured'), color: 0xe57373 }
+  },
+
+  updateStatusLine(hub) {
+    if (!this.state.statusRef) return
+    const st = this.computeStatus(hub)
+    this.state.statusRef.setProperty(prop.MORE, { text: st.text, color: st.color })
+  },
+
   repaintButton(ref) {
     const btn = ref.cfg
     const normal = hexColor(ref.on ? btn.colorOn : btn.colorOff, '#546E7A')
@@ -319,10 +380,25 @@ BasePage({
     if (data && data.method === 'config.changed') {
       // config changed in the Zepp App -> rebuild the swiper from scratch
       replace({ url: 'page/home/index.page' })
+    } else if (data && data.method === 'status.changed') {
+      const hub = Object.assign({}, this.state.hub, { status: data.params })
+      this.state.hub = hub
+      this.updateStatusLine(hub)
     }
   },
 
+  onPause() {
+    this.stopAutoRefresh()
+  },
+
+  onResume() {
+    // returning to the page: refresh now if the data has aged past the interval
+    if (Date.now() - (this.state.lastRefreshAt || 0) >= REFRESH_INTERVAL_MS) this.refresh()
+    this.startAutoRefresh()
+  },
+
   onDestroy() {
+    this.stopAutoRefresh()
     logger.log('home onDestroy')
   },
 })

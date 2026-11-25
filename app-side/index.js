@@ -109,6 +109,27 @@ async function haCompactStates(ha, wantedIds) {
   return out
 }
 
+/* ------------------------- last-good state cache --------------------- */
+/* The watch reads HA through the phone (Bluetooth), so a fetch can fail either  */
+/* because HA is down or because the phone lost the watch link. On success we    */
+/* store a compact snapshot; on failure we serve it with `cached:true` + age so   */
+/* the UI still paints something (graceful degradation) instead of an error.      */
+
+function readCache() {
+  return readJson(STORAGE_KEYS.HA_CACHE, {})
+}
+
+function cacheHub(cache, states, areaNames) {
+  cache.hub = { ts: Date.now(), states, areaNames }
+  writeJson(STORAGE_KEYS.HA_CACHE, cache)
+}
+
+function cacheArea(cache, areaId, entities) {
+  if (!cache.areas) cache.areas = {}
+  cache.areas[areaId] = { ts: Date.now(), entities }
+  writeJson(STORAGE_KEYS.HA_CACHE, cache)
+}
+
 /* --------------------------- discovery ---------------------------- */
 
 /**
@@ -214,13 +235,20 @@ AppSideService(
         }
 
         case 'GET_HUB': {
-          // One round-trip payload for the watch home swiper:
-          // config meta + live states of every entity referenced by screen buttons.
+          // One round-trip payload for the watch home swiper: config meta +
+          // live states of every entity referenced by a screen button. On a
+          // live fetch we refresh the cache; on failure we serve the cache.
           const config = readJson(STORAGE_KEYS.HA_CONFIG, defaultConfig())
           const status = readJson(STORAGE_KEYS.HA_STATUS, null)
           const data = readJson(STORAGE_KEYS.HA_DATA, null)
+          const cache = readCache()
           const areaNames = {}
           if (data && data.areas) data.areas.forEach((a) => (areaNames[a.id] = a.name))
+          if (cache.hub && cache.hub.areaNames) {
+            Object.keys(cache.hub.areaNames).forEach((k) => {
+              if (!areaNames[k]) areaNames[k] = cache.hub.areaNames[k]
+            })
+          }
           const wanted = {}
           config.screens.forEach((scr) =>
             (scr.buttons || []).forEach((b) => b.entity && (wanted[b.entity] = true))
@@ -231,37 +259,94 @@ AppSideService(
             return reply(res, { config, status, areaNames, states: null, error: 'NOT_CONFIGURED' })
           }
           if (!wantedList.length) {
-            return reply(res, { config, status, areaNames, states: [], error: null })
+            return reply(res, { config, status, areaNames, states: [], error: null, cached: false })
           }
           haCompactStates(ha, wantedList)
-            .then((states) => reply(res, { config, status, areaNames, states, error: null }))
-            .catch((error) =>
-              reply(res, { config, status, areaNames, states: null, error: String((error && error.message) || error) })
-            )
+            .then((states) => {
+              cacheHub(cache, states, areaNames)
+              reply(res, { config, status, areaNames, states, error: null, cached: false })
+            })
+            .catch((error) => {
+              if (cache.hub && cache.hub.states) {
+                reply(res, {
+                  config,
+                  status,
+                  areaNames,
+                  states: cache.hub.states,
+                  error: null,
+                  cached: true,
+                  age: Date.now() - cache.hub.ts,
+                })
+              } else {
+                reply(res, {
+                  config,
+                  status,
+                  areaNames,
+                  states: null,
+                  error: String((error && error.message) || error),
+                })
+              }
+            })
           break
         }
 
         case 'GET_AREA': {
           const config = readJson(STORAGE_KEYS.HA_CONFIG, defaultConfig())
           const data = readJson(STORAGE_KEYS.HA_DATA, null)
+          const cache = readCache()
+          const cachedArea = (cache.areas || {})[params.areaId] || null
           const areaCfg = (config.areas || {})[params.areaId]
           if (!areaCfg || !data || !data.entities) {
+            if (cachedArea && cachedArea.entities) {
+              return reply(res, {
+                entities: cachedArea.entities,
+                error: null,
+                cached: true,
+                age: Date.now() - cachedArea.ts,
+              })
+            }
             return reply(res, { entities: [], error: 'NOT_CONFIGURED' })
           }
           const wanted = Object.keys(areaCfg.entities || {}).filter((id) => areaCfg.entities[id])
-          if (!wanted.length) return reply(res, { entities: [], error: null })
+          if (!wanted.length) return reply(res, { entities: [], error: null, cached: false })
           const nameById = {}
           data.entities.forEach((e) => (nameById[e.e] = e.n))
-          const ha = getHaConfig()
-          if (!ha) return reply(res, { entities: [], error: 'NOT_CONFIGURED' })
-          haCompactStates(ha, wanted)
-            .then((states) => {
-              states.forEach((s) => {
-                if (!s.n || s.n === s.e) s.n = nameById[s.e] || s.n
-              })
-              reply(res, { entities: states, error: null })
+          const patchNames = (states) => {
+            states.forEach((s) => {
+              if (!s.n || s.n === s.e) s.n = nameById[s.e] || s.n
             })
-            .catch((error) => reply(res, { entities: [], error: String((error && error.message) || error) }))
+            return states
+          }
+          const ha = getHaConfig()
+          if (!ha) {
+            if (cachedArea && cachedArea.entities) {
+              return reply(res, {
+                entities: cachedArea.entities,
+                error: null,
+                cached: true,
+                age: Date.now() - cachedArea.ts,
+              })
+            }
+            return reply(res, { entities: [], error: 'NOT_CONFIGURED' })
+          }
+          haCompactStates(ha, wanted)
+            .then(patchNames)
+            .then((states) => {
+              cacheArea(cache, params.areaId, states)
+              reply(res, { entities: states, error: null, cached: false })
+            })
+            .catch((error) => {
+              if (cachedArea && cachedArea.entities) {
+                reply(res, {
+                  entities: cachedArea.entities,
+                  error: null,
+                  cached: true,
+                  age: Date.now() - cachedArea.ts,
+                })
+              } else {
+                reply(res, { entities: [], error: String((error && error.message) || error) })
+              }
+            })
           break
         }
 

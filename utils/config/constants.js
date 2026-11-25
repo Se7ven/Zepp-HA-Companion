@@ -18,12 +18,22 @@ export const STORAGE_KEYS = {
   HA_SYNC: 'ha_sync',
   /** JSON: { ts, areas: [{id, name}], entities: [{e, n, d, a}] } — discovery cache for Settings App */
   HA_DATA: 'ha_data',
+  /** JSON: { hub: {ts, states, areaNames}, areas: {[areaId]: {ts, entities}} } — last good states for offline use */
+  HA_CACHE: 'ha_cache',
   /** JSON: { view, areaId, screen, button } — Settings App navigation state */
   HA_UI: 'ha_ui',
 }
 
 /** Number of configurable widget screens in the watch app (besides the main one) */
 export const SCREEN_COUNT = 6
+
+/**
+ * Battery policy: states are refreshed when a page opens, and at most once
+ * per this interval while the app stays open. Zepp OS forbids background
+ * network for third-party apps (App Service has no fetch), so this is the
+ * most often data can ever be refreshed.
+ */
+export const REFRESH_INTERVAL_MS = 5 * 60 * 1000
 
 /** Grid of button slots on one widget screen: 2 columns x 3 rows */
 export const GRID_COLS = 2

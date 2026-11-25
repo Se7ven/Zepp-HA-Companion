@@ -22,6 +22,15 @@ ze smartwatchami **Amazfit** działającymi pod systemem **Zepp OS**.
 - **Konfiguracja z telefonu** — w oficjalnej aplikacji Zepp (Ustawienia aplikacji): połączenie
   (URL HA + token), wykrywanie encji, przełączniki obszarów i encji oraz edytor ekranów widżetów.
 
+- **Działa offline / łagodna degradacja** — ostatnie znane stany są buforowane; gdy
+  Home Assistant jest niedostępny, zegarek pokazuje dane z cache (z ich wiekiem) zamiast błędu.
+
+## Odświeżanie i bateria
+
+Stany są odświeżane przy każdym uruchomieniu aplikacji, a dopóki aplikacja jest otwarta —
+automatycznie nie częściej niż raz na 5 minut. Zepp OS nie pozwala aplikacjom zewnętrznym na
+dostęp do sieci w tle — to limit platformy, a pamięć podręczna pokrywa przerwy.
+
 ## Konfiguracja
 
 1. Home Assistant → twój profil użytkownika → **Długoterminowe tokeny dostępu** — utwórz token.

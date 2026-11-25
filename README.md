@@ -22,6 +22,15 @@ with **Amazfit** smartwatches running **Zepp OS**.
 - **Phone-side configuration** — inside the official Zepp App (App Settings): connection
   (HA URL + token), entity discovery, area & entity toggles, and the widget-screen editor.
 
+- **Works offline / degrades gracefully** — the last known states are cached; when Home
+  Assistant is unreachable the watch shows cached data (with its age) instead of an error.
+
+## Refresh & battery
+
+States refresh every time you open the app, and while the app stays open automatically at
+most once every 5 minutes. Zepp OS does not allow third-party apps to access the network in
+the background, so this is the platform limit — cached data covers the gaps.
+
 ## Setup
 
 1. Home Assistant → your user profile → **Long-Lived Access Tokens** → create a token.

@@ -61,6 +61,12 @@ Docs in `docs/` are Apache-2.0 licensed (see `docs/.LICENSE.txt`), used locally 
   `GET /api/states` and area membership from `GET /api/template` with a Jinja template
   (`area_id()`/`area_name()`), because the HA area registry is not otherwise reachable.
   The `/api/template` body is `text/plain` — do **not** JSON.parse it.
+- **Caching & refresh policy:** the side service caches the last successful hub/area responses in
+  `settingsStorage.ha_cache` (phone-side). `GET_HUB`/`GET_AREA` are live-first: on HA failure the
+  cached data is served with `cached: true` + `age`, and the watch shows an amber
+  "Cached data · N min" indicator instead of an error. Refresh happens on every page open and,
+  while the app is open, automatically at most once per `REFRESH_INTERVAL_MS` (5 min,
+  `utils/config/constants.js`) — battery policy.
 - **Watch UI:** screens swipe horizontally via `setScrollMode(SCROLL_MODE_SWIPER_HORIZONTAL)`
   with `VIEW_CONTAINER(page: i)` — max 7 containers per page (1 hub + 6 widget screens fits
   exactly). `LIST_VIEW` requires `API_LEVEL` 5.0 and is **unavailable** (we target 4.0):
@@ -133,8 +139,9 @@ Main data flow: settings app writes `ha_config`/`ha_sync` → side service `onSe
 - [x] Entity list (areas → entities grouped by domain) with toggling
 - [x] 6 customizable widget screens (label, size, position, shape, per-state colors, action)
 - [x] Decide: REST polling (no WebSocket in Zepp OS); areas via `/api/template`
-- [ ] Caching and graceful degradation when HA is unreachable
-- [ ] Update frequency vs battery (currently on-demand refresh only)
+- [x] Caching and graceful degradation when HA is unreachable
+- [x] Update frequency vs battery — refresh on open + ≤1 per 5 min while open (background
+  network is forbidden by the platform, see Gotchas)
 - [ ] App icon, screenshots, catalog publishing
 
 ## Known Gotchas
@@ -146,5 +153,11 @@ Main data flow: settings app writes `ha_config`/`ha_sync` → side service `onSe
   entity state attributes server-side).
 - `settingsStorage` is phone-only; in the side service use `settingsLib` (`@zeppos/zml/base-side`),
   never import `@zos/settings` there.
+- **Background network is impossible for third-party apps**: the App Service (`app-service/`)
+  has no `fetch` and no timers, and the app-side service only lives during a page session.
+  Max achievable freshness = cache + foreground refresh (≤1 per 5 min). Do not attempt to
+  re-add background polling.
+- The cache lives in `settingsStorage` (on the phone): it survives HA outages, but if the phone
+  link itself is down the watch cannot read it — the page then shows a connection error.
 - `docs/` is a snapshot; before making API decisions, cross-check online docs and
   `@zeppos/device-types` (versions in `node_modules/@zeppos/device-types/index.d.ts`).

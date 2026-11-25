@@ -63,6 +63,13 @@ Dokumentacja w `docs/` jest na licencji Apache-2.0 (patrz `docs/.LICENSE.txt`), 
   i nazwy encji z `GET /api/states`, a przynależność do obszarów z `GET /api/template`
   z szablonem Jinja (`area_id()`/`area_name()`), ponieważ rejestr obszarów HA jest inaczej
   niedostępny. Odpowiedź `/api/template` to `text/plain` — **nie parsuj jej jako JSON**.
+- **Buforowanie i polityka odświeżania:** serwis app-side buforuje ostatnie poprawne odpowiedzi
+  huba/obszarów w `settingsStorage.ha_cache` (po stronie telefonu). `GET_HUB`/`GET_AREA` działają
+  live-first: przy niedostępności HA zwracane są dane z cache z `cached: true` i `age`,
+  a zegarek pokazuje bursztynowy wskaźnik „Dane z pamięci · N min” zamiast błędu.
+  Odświeżanie następuje przy każdym otwarciu strony i, dopóki aplikacja jest otwarta,
+  automatycznie nie częściej niż raz na `REFRESH_INTERVAL_MS` (5 minut,
+  `utils/config/constants.js`) — oszczędność baterii.
 - **UI zegarka:** ekrany przewijają się poziomym swipe'em przez
   `setScrollMode(SCROLL_MODE_SWIPER_HORIZONTAL)` z `VIEW_CONTAINER(page: i)` — maksymalnie
   7 kontenerów na stronę (1 hub + 6 ekranów widżetów mieści się co do sztuki). `LIST_VIEW`
@@ -137,8 +144,9 @@ reaguje przez `onSettingsChange` → `discover()` buforuje `ha_data` → zegarka
 - [x] Lista encji (obszary → encje pogrupowane po domenach) z przełączaniem
 - [x] 6 konfigurowalnych ekranów widżetów (etykieta, rozmiar, pozycja, kształt, kolory dla on/off, akcja)
 - [x] Decyzja: odpytywanie REST (WebSocket w Zepp OS brak); obszary przez `/api/template`
-- [ ] Buforowanie i łagodna degradacja, gdy HA jest niedostępny
-- [ ] Częstotliwość odświeżania vs bateria (obecnie tylko odświeżanie na żądanie)
+- [x] Buforowanie i łagodna degradacja, gdy HA jest niedostępny
+- [x] Częstotliwość odświeżania vs bateria — odświeżanie przy otwarciu + ≤1 na 5 min,
+  gdy aplikacja otwarta (sieć w tle jest zabroniona przez platformę, patrz Pułapki)
 - [ ] Ikona aplikacji, zrzuty ekranu, publikacja w katalogu
 
 ## Znane pułapki
@@ -150,5 +158,11 @@ reaguje przez `onSettingsChange` → `discover()` buforuje `ha_data` → zegarka
   (filtruj atrybuty stanów encji po stronie serwisu).
 - `settingsStorage` jest tylko po stronie telefonu; w serwisie app-side używaj `settingsLib`
   (`@zeppos/zml/base-side`), nigdy nie importuj tam `@zos/settings`.
+- **Sieć w tle jest niemożliwa dla aplikacji zewnętrznych**: App Service (`app-service/`)
+  nie ma `fetch` ani timerów, a usługa app-side żyje tylko podczas sesji strony.
+  Maksymalna świeżość danych = cache + odświeżanie na pierwszym planie (≤1 na 5 min).
+  Nie próbuj ponownie dodać odpytywania w tle.
+- Cache znajduje się w `settingsStorage` (na telefonie): przetrwa awarię HA, ale jeśli sam
+  kanał z telefonem padnie, zegarek nie może go odczytać — strona pokaże błąd połączenia.
 - `docs/` to migawka; przed decyzjami o API sprawdzaj dokumentację online oraz
   `@zeppos/device-types` (wersje w `node_modules/@zeppos/device-types/index.d.ts`).
