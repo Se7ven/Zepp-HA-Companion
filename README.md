@@ -59,12 +59,18 @@ CI builds on every push to `main` (app version = short commit hash, artifact in
 (`0.0.1` or `v0.0.1` — the app version equals the tag).
 
 Each release notes page embeds a **QR code**: open the Zepp App developer mode, scan it,
-and the watch installs the build over Wi-Fi/Bluetooth. The QR link is served by the Zepp
-preview service and expires in about **7 days**. To enable the QR, add three repository
+and the watch installs the build over Wi-Fi/Bluetooth. The QR points to a special
+**preview build** (attached to the release as `*-preview.zab`) — the Zepp App refuses
+regular release packages in developer mode. The QR link is served by the Zepp preview
+service and expires in about **7 days**. To enable the QR, add three repository
 secrets — run `npx zeus login` once, then copy the values from `~/.zepp/.zeus` into
 **`ZEUS_APPTOKEN`**, **`ZEUS_USER_ID`**, **`ZEUS_CNAME`** (Repo → Settings → Secrets and
 variables → Actions). Without them releases are still created, with a notice that the QR
 was skipped.
+
+The release `.zab` itself is the **store candidate**: publishing to the Zepp catalog is a
+manual upload at [console.zepp.com](https://console.zepp.com/) (step-by-step instructions
+are included in every release; you will need a real appId first).
 
 ## Documentation
 

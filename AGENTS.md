@@ -106,12 +106,18 @@ CI: GitHub Actions (`.github/workflows/`). `build.yml` runs on push to `main`/PR
 injects the app version: short commit sha on `main` (`scripts/ci-version.cjs`), `pr-<n>` on
 PRs; uploads the `.zab` artifact. `release.yml` runs on tags `[0-9]+.[0-9]+.[0-9]+` or
 `v*.*.*`, sets app version = tag (without leading `v`), publishes a GitHub Release with the
-`.zab` and embeds a **developer-mode QR**: the release uploads the package to the Zepp
-preview service via `scripts/ci-zepp-upload.cjs` (reuses zeus-cli's `uploadPackage`; URL
-`https://<host>/custom/tools/app-dial/download/<code>`, ~7-day expiry) and renders it as
-`qr.png`. Needs repo secrets `ZEUS_APPTOKEN`/`ZEUS_USER_ID`/`ZEUS_CNAME` — values from
+`.zab` and runs **two pipelines**: the release `.zab` is a
+PROD build (store candidate), while `scripts/ci-preview-build.cjs` produces a
+**PREVIEW package** and uploads it to the Zepp preview service — a non-interactive
+equivalent of `zeus preview` cloud mode (`buildSupportV3Config(BuildMode.PREVIEW)` omits
+`.ip-package`, which is why the Zepp App rejects release packages with
+"Only preview packages are available"; `uploadPackage` returns a
+`zpkd1://<host>/custom/tools/app-dial/download/<code>` link, ~7-day expiry). The link is
+rendered as `qr.png` and the preview package is attached as `*-preview.zab`. Needs repo secrets `ZEUS_APPTOKEN`/`ZEUS_USER_ID`/`ZEUS_CNAME` — values from
 `~/.zepp/.zeus` after `npx zeus login`. Without them the release is created with a
-"QR skipped" note. Locally the artifact lands in `dist/`; local builds keep the version from
+"QR skipped" note. Publishing to the Zepp catalog has **no public API/CLI**: it is a manual
+upload of the release `.zab` at console.zepp.com (requires a real appId — replace the
+placeholder 29331 — plus metadata and review); the release notes embed the instructions. Locally the artifact lands in `dist/`; local builds keep the version from
 `app.json`/`package.json` (0.4.0).
 
 ## Structure

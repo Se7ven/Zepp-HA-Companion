@@ -109,13 +109,18 @@ CI: GitHub Actions (`.github/workflows/`). `build.yml` собирается на
 подставляет версию приложения: короткий хеш коммита в `main` (`scripts/ci-version.cjs`),
 `pr-<n>` в PR; загружает артефакт `.zab`. `release.yml` запускается по тегам
 `[0-9]+.[0-9]+.[0-9]+` или `v*.*.*`, ставит версию приложения = тег (без ведущего `v`),
-публикует GitHub Release с `.zab` и встраивает **QR для установки в режиме разработчика**:
-релиз загружает пакет в сервис предпросмотра Zepp через `scripts/ci-zepp-upload.cjs`
-(переиспользует `uploadPackage` из zeus-cli; URL
-`https://<host>/custom/tools/app-dial/download/<code>`, срок жизни ~7 дней) и рендерит его
-как `qr.png`. Требуются секреты репозитория `ZEUS_APPTOKEN`/`ZEUS_USER_ID`/`ZEUS_CNAME` —
+публикует GitHub Release с `.zab` и запускает **два пайплайна**: релизный `.zab` — это
+PROD-сборка (кандидат в магазин), а `scripts/ci-preview-build.cjs` собирает и загружает в
+сервис предпросмотра Zepp **PREVIEW-пакет** — неинтерактивный аналог облачного режима
+`zeus preview` (`buildSupportV3Config(BuildMode.PREVIEW)` не включает `.ip-package` —
+поэтому приложение Zepp отвергает релизные пакеты с ошибкой
+"Only preview packages are available"; `uploadPackage` возвращает ссылку
+`zpkd1://<host>/custom/tools/app-dial/download/<code>`, срок жизни ~7 дней). Ссылка
+рендерится как `qr.png`, а preview-пакет прикрепляется ассетом `*-preview.zab`. Требуются секреты репозитория `ZEUS_APPTOKEN`/`ZEUS_USER_ID`/`ZEUS_CNAME` —
 значения из `~/.zepp/.zeus` после `npx zeus login`. Без них релиз создаётся с пометкой
-«QR пропущен». Локально артефакт лежит в `dist/`; локальные сборки сохраняют версию из
+«QR пропущен». Публикация в каталог Zepp **не имеет публичного API/CLI**: это ручная
+загрузка релизного `.zab` через console.zepp.com (нужен реальный appId вместо
+плейсхолдера 29331, плюс метаданные и модерация); инструкция встроена в описание релиза. Локально артефакт лежит в `dist/`; локальные сборки сохраняют версию из
 `app.json`/`package.json` (0.4.0).
 
 ## Структура

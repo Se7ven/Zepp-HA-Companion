@@ -59,12 +59,18 @@ artefakt w [Actions](https://github.com/Se7ven/Zepp-HA-Companion/actions)) i pub
 (`0.0.1` lub `v0.0.1` — wersja aplikacji jest równa tagowi).
 
 Każdy opis wydania zawiera **kod QR**: otwórz w aplikacji Zepp tryb deweloperski,
-zeskanuj kod, a zegarek zainstaluje build przez Wi-Fi/Bluetooth. Link w QR obsługuje
-serwis podglądu Zepp i wygasa po około **7 dniach**. Aby włączyć QR, dodaj trzy sekrety
-repozytorium — uruchom raz `npx zeus login`, a następnie skopiuj wartości z `~/.zepp/.zeus`
-do **`ZEUS_APPTOKEN`**, **`ZEUS_USER_ID`**, **`ZEUS_CNAME`**
+zeskanuj kod, a zegarek zainstaluje build przez Wi-Fi/Bluetooth. QR wskazuje na specjalny
+**build preview** (załączony do wydania jako `*-preview.zab`) — aplikacja Zepp odrzuca
+zwykłe pakiety release’owe w trybie deweloperskim. Link w QR obsługuje serwis podglądu
+Zepp i wygasa po około **7 dniach**. Aby włączyć QR, dodaj trzy sekrety repozytorium —
+uruchom raz `npx zeus login`, a następnie skopiuj wartości z `~/.zepp/.zeus` do
+**`ZEUS_APPTOKEN`**, **`ZEUS_USER_ID`**, **`ZEUS_CNAME`**
 (Repo → Settings → Secrets and variables → Actions). Bez sekretów wydania nadal są
 tworzone, z adnotacją, że QR został pominięty.
+
+Sam `.zab` z wydania to **kandydat do sklepu**: publikacja do katalogu Zepp to ręczne
+wgranie przez [console.zepp.com](https://console.zepp.com/) (instrukcja krok po kroku
+znajduje się w każdym wydaniu; najpierw potrzebujesz prawdziwego appId).
 
 ## Dokumentacja
 

@@ -32,22 +32,28 @@ jobs:
       - name: Set app version
         run: node scripts/ci-version.cjs "${{ steps.ver.outputs.version }}"
 
-      - name: Build
+      # Pipeline 1: PROD package - release asset / store candidate.
+      - name: Build release package (PROD)
         run: npm run build
 
-      - name: Create release with package
+      - name: Collect release package
+        id: prod
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/*.zab \
-            --title "Zepp HA Companion $GITHUB_REF_NAME" \
-            --notes "Building ${GITHUB_SHA:0:7}..."
+          ZAB=$(ls -t dist/*.zab | head -1)
+          echo "zab=$ZAB" >> "$GITHUB_OUTPUT"
 
-      - name: Upload package to Zepp preview service
+      # Pipeline 2: PREVIEW package - only these install via developer-mode QR
+      # (the Zepp App rejects PROD packages: "Only preview packages are available").
+      - name: Build & upload preview package (Zepp preview service)
         id: zepp
         if: env.ZEUS_APPTOKEN != '' && env.ZEUS_CNAME != ''
         run: |
-          ZAB=$(ls dist/*.zab | head -1)
-          URL=$(node scripts/ci-zepp-upload.cjs "$ZAB" | tail -1)
+          node scripts/ci-preview-build.cjs | tee preview-out.log
+          URL=$(tail -1 preview-out.log)
           echo "url=$URL" >> "$GITHUB_OUTPUT"
+          PREVIEW_ZAB=$(ls -t dist/*.zab | head -1)
+          mv "$PREVIEW_ZAB" "${PREVIEW_ZAB%.zab}-preview.zab"
+          echo "preview_zab=${PREVIEW_ZAB%.zab}-preview.zab" >> "$GITHUB_OUTPUT"
           pip install --quiet qrcode pillow
           python3 - "$URL" <<'PY'
           import sys
@@ -55,21 +61,42 @@ jobs:
           qrcode.make(sys.argv[1]).save('qr.png')
           PY
 
+      - name: Create release with packages
+        run: |
+          gh release create "$GITHUB_REF_NAME" "${{ steps.prod.outputs.zab }}" \
+            --title "Zepp HA Companion $GITHUB_REF_NAME" \
+            --notes "Building ${GITHUB_SHA:0:7}..."
+          if [ -n "${{ steps.zepp.outputs.preview_zab }}" ]; then
+            gh release upload "$GITHUB_REF_NAME" "${{ steps.zepp.outputs.preview_zab }}" --clobber
+            gh release upload "$GITHUB_REF_NAME" qr.png --clobber
+          fi
+
       - name: Publish release notes with dev-mode QR
         if: steps.zepp.conclusion == 'success'
         run: |
-          gh release upload "$GITHUB_REF_NAME" qr.png --clobber
           cat > body.md <<EOF
           ## Zepp HA Companion $GITHUB_REF_NAME
 
-          **Install on the watch (developer mode):** open the Zepp App and scan this code
-          (issued by the Zepp preview service, **expires in ~7 days**; the watch must be
-          connected to the phone with the Zepp App logged into the same developer account):
+          **Install on the watch (developer mode):** open the Zepp App, scan this code
+          (a PREVIEW package issued by the Zepp preview service - the app rejects release
+          packages. Link **expires in ~7 days**; the watch must be connected to the phone
+          with the Zepp App logged into the same developer account):
 
           ![Developer-mode install QR](https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/qr.png)
 
-          - \`.zab\` package: attached to this release (direct download, no GitHub login needed)
+          - \`*-preview.zab\`: the preview package uploaded above (for inspection)
+          - \`.zab\`: release build (store candidate, direct download, no GitHub login needed)
           - Commit: ${GITHUB_SHA:0:7}
+
+          ### Publishing to the Zepp store
+
+          There is no public API/CLI for store uploads - do it via the web console:
+          1. https://console.zepp.com -> your app (register it first with a **real appId**;
+             this build still carries the placeholder \`29331\`).
+          2. Create a new version with this tag number, fill in description, category,
+             supported devices, privacy statement and screenshots.
+          3. Upload the \`.zab\` release asset attached here (its appId must match the
+             registered one). Submit for review.
           EOF
           gh release edit "$GITHUB_REF_NAME" --notes-file body.md
 
@@ -81,9 +108,17 @@ jobs:
 
           Developer-mode QR is not available: set repository secrets ZEUS_APPTOKEN,
           ZEUS_USER_ID, ZEUS_CNAME (values from \`~/.zepp/.zeus\` after \`npx zeus login\`)
-          to enable it, then re-run this workflow.
+          to enable it, then re-run this workflow. The QR always installs a PREVIEW
+          package build (the Zepp App rejects release packages by design).
 
           - \`.zab\` package: attached to this release (direct download, no GitHub login needed)
           - Commit: ${GITHUB_SHA:0:7}
+
+          ### Publishing to the Zepp store
+
+          There is no public API/CLI for store uploads - do it via the web console
+          (https://console.zepp.com): new version -> metadata + screenshots -> upload this
+          \`.zab\` (appId must match the registered app; currently the placeholder \`29331\`)
+          -> submit for review.
           EOF
           gh release edit "$GITHUB_REF_NAME" --notes-file body.md

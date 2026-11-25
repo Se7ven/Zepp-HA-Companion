@@ -111,13 +111,18 @@ CI: GitHub Actions (`.github/workflows/`). `build.yml` uruchamia się przy push 
 PR i wstrzykuje wersję aplikacji: krótki skrót commitu dla `main` (`scripts/ci-version.cjs`),
 `pr-<n>` dla PR; wgrywa artefakt `.zab`. `release.yml` uruchamia się dla tagów
 `[0-9]+.[0-9]+.[0-9]+` lub `v*.*.*`, ustawia wersję aplikacji = tag (bez przedniego `v`),
-publikuje GitHub Release z `.zab` i osadza **kod QR instalacji w trybie deweloperskim**:
-wydanie wysyła pakiet do usługi podglądu Zepp przez `scripts/ci-zepp-upload.cjs`
-(przeużywa `uploadPackage` z zeus-cli; URL
-`https://<host>/custom/tools/app-dial/download/<code>`, ważność ~7 dni) i renderuje go jako
-`qr.png`. Wymaga sekretów repozytorium `ZEUS_APPTOKEN`/`ZEUS_USER_ID`/`ZEUS_CNAME` —
-wartości z `~/.zepp/.zeus` po `npx zeus login`. Bez nich wydanie jest tworzone z adnotacją
-„QR pominięty”. Lokalnie artefakt trafia do `dist/`; lokalne budowania zachowują wersję z
+publikuje GitHub Release z `.zab` i uruchamia **dwa potoki**: `.zab` wydania to
+build PROD (kandydat do sklepu), a `scripts/ci-preview-build.cjs` buduje i wysyła do
+usługi podglądu Zepp **pakiet PREVIEW** — nieinteraktywny odpowiednik chmurowego trybu
+`zeus preview` (`buildSupportV3Config(BuildMode.PREVIEW)` bez `.ip-package` — dlatego
+aplikacja Zepp odrzuca pakiety release’owe błędem „Only preview packages are available”;
+`uploadPackage` zwraca link `zpkd1://<host>/custom/tools/app-dial/download/<code>`,
+ważność ~7 dni). Link jest renderowany jako `qr.png`, a pakiet preview dołączany
+jako zasób `*-preview.zab`. Wymaga sekretów repozytorium `ZEUS_APPTOKEN`/`ZEUS_USER_ID`/`ZEUS_CNAME` —
+wartości z `~/.zepp/.zeus` po `npx zeus login`. Bez nich wydanie jest tworzona z adnotacją
+„QR pominięty”. Publikacja do katalogu Zepp **nie ma publicznego API/CLI**: to ręczne
+wgranie `.zab` wydania przez console.zepp.com (wymaga prawdziwego appId zamiast
+placeholdera 29331, plus metadane i review); instrukcja jest w opisie wydania. Lokalnie artefakt trafia do `dist/`; lokalne budowania zachowują wersję z
 `app.json`/`package.json` (0.4.0).
 
 ## Struktura
