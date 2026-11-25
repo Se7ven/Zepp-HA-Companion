@@ -40,7 +40,9 @@ jobs:
         id: prod
         run: |
           ZAB=$(ls -t dist/*.zab | head -1)
-          echo "zab=$ZAB" >> "$GITHUB_OUTPUT"
+          # copy aside: the preview build below wipes dist/
+          cp "$ZAB" release-package.zab
+          echo "zab=release-package.zab" >> "$GITHUB_OUTPUT"
 
       # Pipeline 2: PREVIEW package - only these install via developer-mode QR
       # (the Zepp App rejects PROD packages: "Only preview packages are available").
