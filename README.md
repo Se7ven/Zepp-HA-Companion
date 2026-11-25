@@ -2,26 +2,29 @@
 
 [![Build](https://github.com/Se7ven/Zepp-HA-Companion/actions/workflows/build.yml/badge.svg)](https://github.com/Se7ven/Zepp-HA-Companion/actions/workflows/build.yml)
 
-Приложение-компаньон для интеграции [Home Assistant](https://www.home-assistant.io/)
-с умными часами **Amazfit** на базе **Zepp OS**.
+[English](README.md) | [Русский](README.ru.md) | [Polski](README.pl.md)
 
-- Целевое устройство: **Amazfit Balance 3** (480x480, Zepp OS 5/6, API_LEVEL до 4.4)
-- Архитектура: мини-приложение Zepp OS (страницы на часах + app-side сервис с сетью через телефон)
-- Подключение к Home Assistant: REST API + Long-Lived Access Token
+Companion app integrating [Home Assistant](https://www.home-assistant.io/)
+with **Amazfit** smartwatches running **Zepp OS**.
 
-> ⚠️ Проект на стадии каркаса (skeleton). См. [AGENTS.md](AGENTS.md) — описание архитектуры и дорожная карта.
+- Target device: **Amazfit Balance 3** (480x480, Zepp OS 5/6, API_LEVEL up to 4.4)
+- Architecture: Zepp OS mini-app (watch-side pages + app-side service with network via phone)
+- Home Assistant connection: REST API + Long-Lived Access Token
 
-## Сборка
+> ⚠️ The project is at the skeleton stage. See [AGENTS.md](AGENTS.md) — architecture description and roadmap.
+
+## Build
 
 ```bash
 npm ci
-npm run build     # -> dist/*.zab (установочный пакет для часов)
-npm run dev       # разработка в симуляторе
-npm run preview   # установка на часы через QR-код (требует zeus login)
+npm run build     # -> dist/*.zab (installable package for the watch)
+npm run dev       # development in the simulator
+npm run preview   # install to the watch via QR code (requires zeus login)
 ```
 
-Готовые сборки: [GitHub Actions](https://github.com/Se7ven/Zepp-HA-Companion/actions) / [Releases](https://github.com/Se7ven/Zepp-HA-Companion/releases) (теги `v*.*.*`).
+Prebuilt packages: [GitHub Actions](https://github.com/Se7ven/Zepp-HA-Companion/actions) /
+[Releases](https://github.com/Se7ven/Zepp-HA-Companion/releases) (tags `v*.*.*`).
 
-## Лицензия
+## License
 
-MIT. Оффлайн-копия документации Zepp OS в `docs/` (не коммитится) распространяется под Apache-2.0.
+MIT. The offline copy of Zepp OS documentation in `docs/` (not committed) is distributed under Apache-2.0.

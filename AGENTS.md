@@ -1,111 +1,125 @@
 # AGENTS.md
 
-Инструкции для AI-агентов, работающих с этим репозиторием.
+Instructions for AI agents working in this repository.
 
-## О проекте
+[English](AGENTS.md) | [Русский](AGENTS.ru.md) | [Polski](AGENTS.pl.md)
 
-**Zepp HA Companion** — приложение-компаньон для интеграции [Home Assistant](https://www.home-assistant.io/)
-с умными часами Amazfit на базе Zepp OS.
+## Documentation Language Policy
 
-- **Целевое устройство:** Amazfit Balance 3 (круг, 480x480, `deviceSource` `11141376`/`11141377`/`11141379`)
-- **Целевая ОС:** последняя Zepp OS (на момент написания — Zepp OS 5/6; максимальный `API_LEVEL` у Balance 3 — 4.4)
-- **Конфигурация приложения:** `apiVersion` `compatible/target/minVersion = 4.0` в `app.json`
-  (официальные сэмплы уровня 4.x используют именно эту комбинацию; при необходимости поднять —
-  проверьте поддерживаемые значения в `docs/reference/app-json.mdx`)
+All project documentation (every `*.md` in the repository root) must be maintained in **three
+languages: English, Russian, and Polish**.
 
-## Ключевые ссылки
+- `README.md` / `AGENTS.md` — canonical English versions; `.ru.md` / `.pl.md` are translations.
+- Any documentation change must be applied to **all three language versions in the same commit**.
+- Every language version starts with a language switch line that cross-links the other versions.
+- Translations stay faithful; keep code blocks, paths and identifiers untranslated.
 
-| Что | Где |
+## About the Project
+
+**Zepp HA Companion** — a companion app integrating [Home Assistant](https://www.home-assistant.io/)
+with Amazfit smartwatches running Zepp OS.
+
+- **Target device:** Amazfit Balance 3 (round, 480x480, `deviceSource` `11141376`/`11141377`/`11141379`)
+- **Target OS:** latest Zepp OS (as of writing — Zepp OS 5/6; Balance 3 supports `API_LEVEL` up to 4.4)
+- **App configuration:** `app.json` uses `apiVersion` `compatible/target/minVersion = 4.0`
+  (official 4.x-level samples use exactly this combination; to raise it, verify the supported
+  values in `docs/reference/app-json.mdx`)
+
+## Key Links
+
+| What | Where |
 | --- | --- |
-| Оффлайн-документация (источник docs.zepp.com, mdx) | `docs/` — **в gitignore, не коммитить**; обновлять `scripts/update-docs.sh` |
-| Онлайн-документация | https://docs.zepp.com/ |
-| Консоль разработчика (appid, публикация) | https://console.zepp.com/ |
-| Официальные сэмплы | https://github.com/zepp-health/zeppos-samples (`application/4.0/fetch-api` — ближайший по архитектуре пример) |
-| Документация (исходники) | https://github.com/zepp-health/zeppos-docs |
-| Zeus CLI (сборка) | https://www.npmjs.com/package/@zeppos/zeus-cli |
-| Скаффолдер модулей | https://github.com/zepp-health/create-zos |
+| Offline documentation (source of docs.zepp.com, mdx) | `docs/` — **gitignored, never commit**; refresh with `scripts/update-docs.sh` |
+| Online documentation | https://docs.zepp.com/ |
+| Developer console (appid, publishing) | https://console.zepp.com/ |
+| Official samples | https://github.com/zepp-health/zeppos-samples (`application/4.0/fetch-api` — closest architectural example) |
+| Documentation (source repo) | https://github.com/zepp-health/zeppos-docs |
+| Zeus CLI (build) | https://www.npmjs.com/package/@zeppos/zeus-cli |
+| Module scaffolder | https://github.com/zepp-health/create-zos |
 
-Документация в `docs/` лицензирована Apache-2.0 (см. `docs/.LICENSE.txt`), используется только локально.
+Docs in `docs/` are Apache-2.0 licensed (see `docs/.LICENSE.txt`), used locally only.
 
-## Архитектура Zepp OS (важно понимать)
+## Zepp OS Architecture (must understand)
 
-- **Pages** (`page/`) — UI на часовом устройстве, исполняются в QuickJS на самих часах.
-  Сеть напрямую из page **недоступна**.
-- **App-Side Service** (`app-side/`) — сервис-компаньон с доступом к сети (`fetch`, `WebSocket`),
-  запускается при обращении со страницы. Общение page ↔ side — через `@zeppos/zml`
+- **Pages** (`page/`) — watch-side UI, runs in QuickJS on the watch itself.
+  Direct network access from a page is **not available**.
+- **App-Side Service** (`app-side/`) — companion service with network access (`fetch`, `WebSocket`),
+  started when a page calls into it. Page ↔ side communication goes through `@zeppos/zml`
   (`BasePage` → `this.request({ method, ... })` ↔ `BaseSideService.onRequest(req, res)`).
-  Работает поверх Bluetooth-канала с телефоном: реальный сетевой запрос выполняет телефон через Zepp/Zepp Health приложение.
-- **Setting** (`setting/`) — настройки приложения в телефоне (Zepp App → App Settings UI),
-  значения приходят в `settingsStorage` (`ha_config`: `{ url, token }`). **Пока не создан** —
-  добавить: `npx create-zos module setting`.
+  It runs over the Bluetooth channel to the phone: the actual network request is performed by the
+  phone via the Zepp/Zepp Health app.
+- **Setting** (`setting/`) — app settings UI in the phone (Zepp App → App Settings),
+  values arrive in `settingsStorage` (`ha_config`: `{ url, token }`). **Not created yet** —
+  add with `npx create-zos module setting`.
 - Home Assistant: REST (`GET /api/`, `GET /api/states`, `POST /api/services/...`) +
-  Long-Lived Access Token. Долговременное WebSocket-соединение на часах нестабильно —
-  для скелета выбран REST-поллинг; решение зафиксировать в ADR/docs после проверки.
+  Long-Lived Access Token. A long-lived WebSocket from the watch is unreliable —
+  the skeleton uses REST polling; record the final decision in an ADR/docs after verification.
 
-## Команды
+## Commands
 
 ```bash
-npm ci              # установка зависимостей
-npm run dev         # разработка с превью в симуляторе (zeus dev)
-npm run preview     # установка на реальные часы через QR (zeus preview, требует zeus login)
-npm run build       # сборка установочного пакета -> dist/*.zab
-scripts/update-docs.sh   # обновить оффлайн-документацию docs/
+npm ci              # install dependencies
+npm run dev         # development with simulator preview (zeus dev)
+npm run preview     # install to real watch via QR (zeus preview, requires zeus login)
+npm run build       # build installable package -> dist/*.zab
+scripts/update-docs.sh   # refresh the offline docs/ mirror
 ```
 
-Добавление модулей (страница, side service, settings и т.п.) — официальным скаффолдером,
-он правит `app.json` автоматически:
+Adding modules (page, side service, settings, etc.) — use the official scaffolder,
+it patches `app.json` automatically:
 
 ```bash
-npx create-zos@latest module page        # новая страница
-npx create-zos@latest module setting     # экран настроек в телефоне
+npx create-zos@latest module page        # new page
+npx create-zos@latest module setting     # phone-side settings screen
 npx create-zos@latest module app-side    # side service
 ```
 
-CI: GitHub Actions (`.github/workflows/`). `build.yml` собирает `.zab` и загружает артефакт;
-`release.yml` публикует Release по тегу `v*.*.*`. Локально артефакт лежит в `dist/`.
+CI: GitHub Actions (`.github/workflows/`). `build.yml` builds the `.zab` and uploads an artifact;
+`release.yml` publishes a GitHub Release on `v*.*.*` tags. Locally the artifact lands in `dist/`.
 
-## Структура
+## Structure
 
 ```
-app.js                  # точка входа устройства (App lifecycle)
-app.json                # конфигурация мини-приложения (appId, apiVersion, targets, i18n)
+app.js                  # device entry point (App lifecycle)
+app.json                # mini-app config (appId, apiVersion, targets, i18n)
 page/
-  home/                 # главная страница (index.page.js + index.layout/)
-  i18n/                 # переводы UI (en-US.po, ru-RU.po, zh-CN.po)
+  home/                 # home page (index.page.js + index.layout/)
+  i18n/                 # UI translations (en-US.po, ru-RU.po, zh-CN.po)
 app-side/
-  index.js              # сетевой мост к Home Assistant (fetch через телефон)
+  index.js              # network bridge to Home Assistant (fetch via phone)
   i18n/
-setting/                # (TODO) настройки HA в телефоне
-utils/config/constants.js  # ключи хранилища, дефолты
-assets/common.r|common.s   # ресурсы под форматы экранов (r - круглый 480)
-docs/                   # ОФФЛАЙН-КОПИЯ доков Zepp OS, в gitignore
-scripts/                # служебные скрипты
+setting/                # (TODO) HA settings in the phone app
+utils/config/constants.js  # storage keys, defaults
+assets/common.r|common.s   # resources per screen shape (r = round 480)
+docs/                   # OFFLINE COPY of Zepp OS docs, gitignored
+scripts/                # utility scripts
 ```
 
-## Конвенции
+## Conventions
 
-- Язык кода — JavaScript (ES modules, не TypeScript; типы через `@zeppos/device-types` + `jsconfig.json`).
-- UI-виджеты: `import * as hmUI from '@zos/ui'`; layout-параметры — в `index.[pf].layout.js`
-  (`[pf]` подставляется платформой: `r`/`s`).
-- Переводы: формат `.po`, ключи через i18n; не хардкодить строки в UI.
-- `app.json`: `appId` сейчас **плейсхолдер** `29331` (из шаблона). Реальный id выдаётся в
-  console.zepp.com — присвоить перед публикацией. Не менять `configVersion`.
-- Не коммитить: `node_modules/`, `dist/`, `docs/`, `.zab`, секреты. HA-токен не хранить в репозитории.
-- Версионирование: семантический, синхронно в `package.json` и `app.json` (`app.version.name`).
+- Code language is JavaScript (ES modules, not TypeScript; types via `@zeppos/device-types` + `jsconfig.json`).
+- UI widgets: `import * as hmUI from '@zos/ui'`; layout parameters live in `index.[pf].layout.js`
+  (`[pf]` is resolved per platform: `r`/`s`).
+- Translations: `.po` format, keys via i18n; do not hardcode UI strings.
+- `app.json`: `appId` is currently a **placeholder** `29331` (from the template). The real id is
+  issued at console.zepp.com — assign it before publishing. Never change `configVersion`.
+- Never commit: `node_modules/`, `dist/`, `docs/`, `.zab`, secrets. Never store an HA token in the repo.
+- Semantic versioning, kept in sync in `package.json` and `app.json` (`app.version.name`).
+- Documentation language policy: see section above — all docs in EN/RU/PL with cross-links.
 
-## Дорожная карта (скелет)
+## Roadmap (skeleton)
 
-- [ ] `setting/` — экран настроек Zepp App (URL HA + токен) с записью в `settingsStorage`
-- [ ] Home page → вызов `TEST_CONNECTION` / `GET_STATES` из `app-side/`
-- [ ] Список избранных сущностей + переключение сервисов (light switch и т.п.)
-- [ ] Кэширование и деградация при недоступности HA
-- [ ] Решить: REST-поллинг vs WebSocket; частота обновления vs батарея
-- [ ] Иконка приложения, скриншоты, публикация в каталог
+- [ ] `setting/` — Zepp App settings screen (HA URL + token) writing to `settingsStorage`
+- [ ] Home page → call `TEST_CONNECTION` / `GET_STATES` from `app-side/`
+- [ ] Favorite entities list + service toggling (light switch, etc.)
+- [ ] Caching and graceful degradation when HA is unreachable
+- [ ] Decide: REST polling vs WebSocket; update frequency vs battery
+- [ ] App icon, screenshots, catalog publishing
 
-## Известные подводные камни
+## Known Gotchas
 
-- Сеть есть только в app-side; из page — только `this.request(...)` (zml).
-- `zeus preview` требует логина аккаунтом разработчика; `zeus build` — нет (проверено в CI-сценарии).
-- `@zeppos/zml` — зависимость рантайма, держим в `dependencies` (не `devDependencies`).
-- Документация в `docs/` — снапшот; перед принятием решений по API сверяйтесь с онлайном
-  и `@zeppos/device-types` (версии в `node_modules/@zeppos/device-types/index.d.ts`).
+- Network exists only in app-side; from a page — only `this.request(...)` (zml).
+- `zeus preview` requires a developer-account login; `zeus build` does not (verified in CI).
+- `@zeppos/zml` is a runtime dependency, keep it in `dependencies` (not `devDependencies`).
+- `docs/` is a snapshot; before making API decisions, cross-check online docs and
+  `@zeppos/device-types` (versions in `node_modules/@zeppos/device-types/index.d.ts`).
