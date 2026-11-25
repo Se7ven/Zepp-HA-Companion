@@ -179,8 +179,8 @@ Main data flow: settings app writes `ha_config`/`ha_sync` → side service `onSe
   re-add background polling.
 - The cache lives in `settingsStorage` (on the phone): it survives HA outages, but if the phone
   link itself is down the watch cannot read it — the page then shows a connection error.
-- The repo is **private** right now: GitHub release asset links need auth, so the release QR
-  encodes the Zepp preview-service URL (works from the Zepp App regardless). Making the repo
-  public would also allow direct `.zab` downloads.
+- The repo is **public**: release `.zab` assets can be downloaded directly by anyone. The
+  release QR still encodes the Zepp preview-service URL, which is what the Zepp App needs for
+  developer-mode installs anyway.
 - `docs/` is a snapshot; before making API decisions, cross-check online docs and
   `@zeppos/device-types` (versions in `node_modules/@zeppos/device-types/index.d.ts`).

@@ -186,8 +186,8 @@ reaguje przez `onSettingsChange` → `discover()` buforuje `ha_data` → zegarka
   Nie próbuj ponownie dodać odpytywania w tle.
 - Cache znajduje się w `settingsStorage` (na telefonie): przetrwa awarię HA, ale jeśli sam
   kanał z telefonem padnie, zegarek nie może go odczytać — strona pokaże błąd połączenia.
-- Repo jest obecnie **prywatne**: linki do zasobów GitHub Release wymagają uwierzytelnienia,
-  więc QR w wydaniu koduje URL usługi podglądu Zepp (działa z aplikacji Zepp niezależnie).
-  Upublicznienie repozytorium umożliwiłoby też bezpośrednie pobieranie `.zab`.
+- Repozytorium jest **publiczne**: zasoby wydań `.zab` może pobrać bezpośrednio każdy.
+  Kod QR w wydaniu nadal koduje URL usługi podglądu Zepp — właśnie on jest potrzebny
+  aplikacji Zepp do instalacji w trybie deweloperskim.
 - `docs/` to migawka; przed decyzjami o API sprawdzaj dokumentację online oraz
   `@zeppos/device-types` (wersje w `node_modules/@zeppos/device-types/index.d.ts`).

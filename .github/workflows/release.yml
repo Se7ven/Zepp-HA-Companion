@@ -68,7 +68,7 @@ jobs:
 
           ![Developer-mode install QR](https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/qr.png)
 
-          - \`.zab\` package: attached to this release (GitHub download requires access to the repo)
+          - \`.zab\` package: attached to this release (direct download, no GitHub login needed)
           - Commit: ${GITHUB_SHA:0:7}
           EOF
           gh release edit "$GITHUB_REF_NAME" --notes-file body.md
@@ -83,7 +83,7 @@ jobs:
           ZEUS_USER_ID, ZEUS_CNAME (values from \`~/.zepp/.zeus\` after \`npx zeus login\`)
           to enable it, then re-run this workflow.
 
-          - \`.zab\` package: attached to this release (GitHub download requires access to the repo)
+          - \`.zab\` package: attached to this release (direct download, no GitHub login needed)
           - Commit: ${GITHUB_SHA:0:7}
           EOF
           gh release edit "$GITHUB_REF_NAME" --notes-file body.md
