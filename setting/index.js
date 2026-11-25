@@ -164,7 +164,7 @@ AppSettingsPage({
     } else {
       items.push(Text({ style: { color: '#888', fontSize: '13px' } }, [gettext('sync_hint')]))
     }
-    items.push(Text({ style: { color: '#aaa', fontSize: '11px', marginTop: '16px' } }, ['Zepp HA Companion v0.2.0']))
+    items.push(Text({ style: { color: '#aaa', fontSize: '11px', marginTop: '16px' } }, ['Zepp HA Companion v0.4.0']))
     return View({ style: { padding: '12px 16px' } }, items)
   },
 

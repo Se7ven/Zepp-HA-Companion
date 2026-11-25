@@ -8,6 +8,7 @@ import { REFRESH_INTERVAL_MS } from '../../utils/config/constants'
 import { ICON_FONT, iconChar, DOMAIN_ICON } from '../../utils/icons'
 
 const logger = log.getLogger('ha-area')
+logger.log('module load')
 
 const PAGE_W = 480
 const MARGIN = 24

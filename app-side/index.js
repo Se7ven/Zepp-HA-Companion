@@ -4,6 +4,7 @@ import { STORAGE_KEYS, defaultConfig } from '../utils/config/constants'
 import { splitEntity, isOn, resolveService } from '../utils/ha'
 
 const logger = log.getLogger('ha-side')
+logger.log('module load')
 
 /* ------------------------------------------------------------------ */
 /* settingsStorage helpers (phone-side persistent storage, zml wrapper) */
