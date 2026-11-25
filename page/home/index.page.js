@@ -58,18 +58,34 @@ BasePage({
   },
 
   build() {
-    this.state.loadingText = createWidget(widget.TEXT, {
-      x: 0,
-      y: px(220),
-      w: px(PAGE_W),
-      h: px(40),
-      text: gettext('loading'),
-      text_size: px(28),
-      color: COLOR_TEXT,
-      align_h: align.CENTER_H,
-    })
-    this.refresh()
-    this.startAutoRefresh()
+    try {
+      this.state.loadingText = createWidget(widget.TEXT, {
+        x: 0,
+        y: px(220),
+        w: px(PAGE_W),
+        h: px(40),
+        text: gettext('loading'),
+        text_size: px(28),
+        color: COLOR_TEXT,
+        align_h: align.CENTER_H,
+      })
+      this.refresh()
+      this.startAutoRefresh()
+    } catch (e) {
+      // never leave a black screen: surface startup failures on the display
+      logger.log('build failed', e && e.message)
+      createWidget(widget.TEXT, {
+        x: px(MARGIN),
+        y: px(200),
+        w: px(PAGE_W - MARGIN * 2),
+        h: px(120),
+        text: 'Startup error: ' + ((e && e.message) || e),
+        text_size: px(22),
+        color: 0xe57373,
+        align_h: align.CENTER_H,
+        text_style: text_style.WRAP,
+      })
+    }
   },
 
   /* Battery policy: refresh at most once per REFRESH_INTERVAL_MS while open;
