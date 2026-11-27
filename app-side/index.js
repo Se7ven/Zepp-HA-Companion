@@ -78,26 +78,66 @@ async function haGetStates(ha) {
  * `area_id()` / `area_name()` template functions cover both for us).
  * Returns { [entity_id]: areaId, ... }; failed lookups map to ''.
  */
-async function haAreaMap(ha) {
-  const template =
-    '{% for s in states %}{{ s.entity_id }}|{{ area_id(s.entity_id) }}\n{% endfor %}'
-  const text = await fetch({
-    url: `${ha.url}/api/template?template=${encodeURIComponent(template)}`,
+async function haFetchText(ha, path) {
+  const response = await fetch({
+    url: `${ha.url}${path}`,
     method: 'GET',
     headers: { Authorization: `Bearer ${ha.token}` },
     timeout: 15000,
   })
-  const raw = typeof text.body === 'string' ? text.body : String(text.body)
-  const map = {}
-  raw.split('\n').forEach((line) => {
-    const i = line.indexOf('|')
-    if (i <= 0) return
-    const entity = line.slice(0, i)
-    let area = line.slice(i + 1).trim()
-    if (!area || area === 'None') area = ''
-    map[entity] = area
-  })
-  return map
+  return typeof response.body === 'string' ? response.body : String(response.body)
+}
+
+/**
+ * Entity -> area map with diagnostics. Strategies:
+ * 1) /api/template + area_id() — works on HA >= 2021.6;
+ * 2) legacy registry REST /api/config/entity_registry/list — covers setups
+ *    where the template endpoint is blocked or altered by a proxy.
+ * Returns { map, source, mapped }; source is 'template' | 'registry' | 'none'.
+ */
+async function haAreaMap(ha) {
+  try {
+    const template =
+      '{% for s in states %}{{ s.entity_id }}|{{ area_id(s.entity_id) }}\n{% endfor %}'
+    const raw = await haFetchText(ha, '/api/template?template=' + encodeURIComponent(template))
+    const map = {}
+    let parsed = 0
+    raw.split('\n').forEach((line) => {
+      const i = line.indexOf('|')
+      if (i <= 0) return
+      const entity = line.slice(0, i).trim()
+      if (!entity || /\s/.test(entity)) return
+      let area = line.slice(i + 1).trim()
+      if (!area || area === 'None') area = ''
+      map[entity] = area
+      parsed++
+    })
+    if (parsed > 0) {
+      let mapped = 0
+      Object.keys(map).forEach((k) => map[k] && mapped++)
+      return { map, source: 'template', mapped }
+    }
+    logger.log('area template produced nothing, raw head:', String(raw).slice(0, 120))
+  } catch (e) {
+    logger.log('area template failed', e)
+  }
+  try {
+    const raw = await haFetchText(ha, '/api/config/entity_registry/list')
+    const data = JSON.parse(raw)
+    const entries = (data && data.entities) || (Array.isArray(data) ? data : [])
+    const map = {}
+    let mapped = 0
+    entries.forEach((en) => {
+      if (!en || !en.entity_id) return
+      const area = en.area_id || ''
+      map[en.entity_id] = area
+      if (area) mapped++
+    })
+    if (entries.length) return { map, source: 'registry', mapped }
+  } catch (e) {
+    logger.log('area registry fallback failed', e)
+  }
+  return { map: {}, source: 'none', mapped: 0 }
 }
 
 /** Compact entity states list [{e, n, s, on}] for the given ids (or all actionable). */
@@ -158,30 +198,40 @@ async function discover(ctx) {
       setStatus.call(ctx, false, 'API_NOT_RUNNING')
       return
     }
-    const [states, areaMap] = await Promise.all([haGetStates(ha), haAreaMap(ha)])
+    const [states, areaRes] = await Promise.all([haGetStates(ha), haAreaMap(ha)])
+    const areaMap = areaRes.map
 
     const areaNames = {}
     try {
-      // friendly area names via template (cheap second call over unique ids)
+      // friendly area names: prefer modern GET /api/areas, fall back to a
+      // cheap template call for the unique ids only
       const ids = {}
       Object.keys(areaMap).forEach((id) => areaMap[id] && (ids[areaMap[id]] = true))
       const list = Object.keys(ids)
       if (list.length) {
-        const t = '{% for a in [' + list.map((id) => JSON.stringify(id)).join(',') + '] %}{{ a }}|{{ area_name(a) }}\n{% endfor %}'
-        const r = await fetch({
-          url: `${ha.url}/api/template?template=${encodeURIComponent(t)}`,
-          method: 'GET',
-          headers: { Authorization: `Bearer ${ha.token}` },
-          timeout: 15000,
-        })
-        const raw = typeof r.body === 'string' ? r.body : String(r.body)
-        raw.split('\n').forEach((line) => {
-          const i = line.indexOf('|')
-          if (i <= 0) return
-          const id = line.slice(0, i)
-          let name = line.slice(i + 1).trim()
-          if (name && name !== 'None') areaNames[id] = name
-        })
+        try {
+          const rawAreas = await haFetchText(ha, '/api/areas')
+          const arr = JSON.parse(rawAreas)
+          if (Array.isArray(arr)) {
+            arr.forEach((a) => {
+              if (a && a.area_id && a.name && ids[a.area_id]) areaNames[a.area_id] = a.name
+            })
+          }
+        } catch (e) {
+          logger.log('/api/areas not available, using template', e)
+        }
+        const missing = list.filter((id) => !areaNames[id])
+        if (missing.length) {
+          const t = '{% for a in [' + missing.map((id) => JSON.stringify(id)).join(',') + '] %}{{ a }}|{{ area_name(a) }}\n{% endfor %}'
+          const raw = await haFetchText(ha, '/api/template?template=' + encodeURIComponent(t))
+          raw.split('\n').forEach((line) => {
+            const i = line.indexOf('|')
+            if (i <= 0) return
+            const id = line.slice(0, i)
+            let name = line.slice(i + 1).trim()
+            if (name && name !== 'None') areaNames[id] = name
+          })
+        }
       }
     } catch (e) {
       logger.log('area names lookup failed', e)
@@ -216,6 +266,8 @@ async function discover(ctx) {
       version: info.version || '',
       areasCount: areaList.length,
       entitiesCount: entities.length,
+      areaSource: areaRes.source,
+      areaMapped: areaRes.mapped,
     })
   } catch (error) {
     logger.log('discover error', error)

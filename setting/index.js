@@ -48,10 +48,7 @@ function iconOptions() {
 }
 
 AppSettingsPage({
-  state: {
-    ui: { view: 'root' },
-    edit: null,
-  },
+  state: {},
 
   /* ----------------------------- plumbing ----------------------------- */
 
@@ -110,7 +107,15 @@ AppSettingsPage({
     }
     return Text(
       { style: { color: '#43A047', fontSize: '13px' } },
-      [gettext('status_ok') + (st.version ? ' — v' + st.version : '') + ', ' + gettext('areas') + ': ' + st.areasCount + ', ' + gettext('entities') + ': ' + st.entitiesCount]
+      [
+        gettext('status_ok') +
+          (st.version ? ' — v' + st.version : '') +
+          ', ' + gettext('areas') + ': ' + st.areasCount +
+          (st.areasCount === 0
+            ? ' (' + gettext('areas_debug') + ': ' + (st.areaSource || '?') + '/' + (st.areaMapped != null ? st.areaMapped : '?') + ')'
+            : '') +
+          ', ' + gettext('entities') + ': ' + st.entitiesCount,
+      ]
     )
   },
 
@@ -275,7 +280,7 @@ AppSettingsPage({
             ]),
             Button({
               label: gettext('edit'),
-              onClick: () => this.nav({ view: 'button', screen: si, button: bi }),
+              onClick: () => this.nav({ view: 'button', screen: si, button: bi, edit: null }),
             }),
             Button({
               label: gettext('delete'),
@@ -293,7 +298,7 @@ AppSettingsPage({
         Button({
           label: gettext('add_button'),
           color: 'primary',
-          onClick: () => this.nav({ view: 'button', screen: si, button: -1 }),
+          onClick: () => this.nav({ view: 'button', screen: si, button: -1, edit: null }),
         })
       )
       rows.push(
@@ -328,11 +333,16 @@ AppSettingsPage({
 
   /* --------------------------- button editor --------------------------- */
 
-  startEdit() {
+  // The Settings App re-renders on every settingsStorage change and the JS
+  // state is NOT guaranteed to survive a rebuild — so the in-progress button
+  // draft lives in the ha_ui storage key, not in memory.
+  editVal() {
     const ui = this.ui()
+    if (ui.edit) return ui.edit
     const config = this.cfg()
-    const existing = ui.button >= 0 ? config.screens[ui.screen].buttons[ui.button] : null
-    this.state.edit = Object.assign(
+    const screen = ui.screen != null ? config.screens[ui.screen] : null
+    const existing = screen && ui.button >= 0 ? (screen.buttons || [])[ui.button] : null
+    return Object.assign(
       {
         entity: '',
         label: '',
@@ -349,30 +359,28 @@ AppSettingsPage({
   },
 
   setEdit(patch) {
-    Object.assign(this.state.edit, patch)
-    this.nav({}) // storage write forces a rebuild
+    const edit = Object.assign({}, this.editVal(), patch)
+    this.nav({ edit }) // storage write keeps the draft across rebuilds
   },
 
   saveEdit() {
     const ui = this.ui()
-    const edit = this.state.edit
-    if (!edit || !edit.entity) return
+    const edit = this.editVal()
+    if (!edit.entity) return
     const c = this.cfg()
     const screen = c.screens[ui.screen]
     if (!screen.buttons) screen.buttons = []
     if (ui.button >= 0) screen.buttons[ui.button] = edit
     else screen.buttons.push(edit)
     this.saveConfig(c)
-    this.state.edit = null
-    this.nav({ view: 'screens', screen: null, button: null })
+    this.nav({ view: 'screens', screen: null, button: null, edit: null })
   },
 
   buttonView() {
     const ui = this.ui()
     const data = this.data()
-    if (!this.state.edit) this.startEdit()
-    const edit = this.state.edit
-    const rows = [this.back({ view: 'screens', button: null })]
+    const edit = this.editVal()
+    const rows = [this.back({ view: 'screens', button: null, edit: null })]
 
     const entityOptions = (data ? data.entities : []).map((e) => ({
       name: e.n + ' (' + (e.a ? 'area' : domainLabel(e.d)) + ')',
@@ -468,8 +476,7 @@ AppSettingsPage({
                       const c = this.cfg()
                       c.screens[ui.screen].buttons.splice(ui.button, 1)
                       this.saveConfig(c)
-                      this.state.edit = null
-                      this.nav({ view: 'screens', button: null })
+                      this.nav({ view: 'screens', button: null, edit: null })
                     },
                   }),
                 ]
@@ -490,7 +497,6 @@ AppSettingsPage({
     if (view === 'area') return this.areaView()
     if (view === 'screens') return this.screensView()
     if (view === 'button') return this.buttonView()
-    this.state.edit = null
     return this.rootView()
   },
 })

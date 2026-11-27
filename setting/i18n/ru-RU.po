@@ -231,3 +231,6 @@ msgstr "Без иконки"
 
 msgid "area_none"
 msgstr "Без зоны"
+
+msgid "areas_debug"
+msgstr "карта зон"

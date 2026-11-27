@@ -231,3 +231,6 @@ msgstr "None"
 
 msgid "area_none"
 msgstr "Unassigned"
+
+msgid "areas_debug"
+msgstr "area map"

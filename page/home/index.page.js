@@ -75,7 +75,27 @@ function dim(color) {
 function radiusFor(shape, w, h) {
   if (shape === 'rect') return px(6)
   if (shape === 'round') return px(24)
-  return px(Math.min(w, h) / 2)
+  return px(Math.floor(Math.min(w, h) / 2))
+}
+
+// A BUTTON widget with a large radius on a wide cell renders as a stretched
+// pill, not a circle — for 'circle' we shrink the button to a square (cell
+// height) and center it inside its grid cell.
+function buttonGeom(btn) {
+  const wide = btn.size === 'l'
+  const cellW = wide ? CELL_W * 2 + GAP : CELL_W
+  const col = wide ? 0 : btn.slot % 2
+  const row = Math.floor(btn.slot / 2)
+  let w = cellW
+  let x = MARGIN + col * (CELL_W + GAP)
+  const y = GRID_TOP + row * (CELL_H + GAP)
+  let radius = 0
+  if (btn.shape === 'circle') {
+    w = CELL_H
+    x += Math.floor((cellW - CELL_H) / 2)
+    radius = Math.floor(CELL_H / 2)
+  }
+  return { x, y, w, h: CELL_H, radius: radiusFor(btn.shape, w, h) }
 }
 
 Page(
@@ -397,12 +417,7 @@ Page(
     }
 
     screen.buttons.forEach((btn) => {
-      const wide = btn.size === 'l'
-      const col = wide ? 0 : btn.slot % 2
-      const row = Math.floor(btn.slot / 2)
-      const w = wide ? CELL_W * 2 + GAP : CELL_W
-      const x = MARGIN + col * (CELL_W + GAP)
-      const y = GRID_TOP + row * (CELL_H + GAP)
+      const g = buttonGeom(btn)
       const st = statesById[btn.entity]
       const ref = {
         cfg: btn,
@@ -422,25 +437,25 @@ Page(
       const icon = iconChar(btn.icon)
       const normal = hexColor(ref.on ? btn.colorOn : btn.colorOff, '#546E7A')
       ref.widget = container.createWidget(widget.BUTTON, {
-        x: px(x),
-        y: px(y),
-        w: px(w),
-        h: px(CELL_H),
-        radius: radiusFor(btn.shape, w, CELL_H),
+        x: px(g.x),
+        y: px(g.y),
+        w: px(g.w),
+        h: px(g.h),
+        radius: g.radius,
         normal_color: normal,
         press_color: dim(normal),
         text: icon ? '' : btn.label || (st && st.n) || btn.entity,
         text_size: px(24),
         color: COLOR_TEXT,
-        text_w: px(w - 16),
+        text_w: px(g.w - 16),
         click_func: fireOnce,
       })
       if (icon) {
         const hasLabel = !!btn.label
         const iconText = container.createWidget(widget.TEXT, {
-          x: px(x),
-          y: px(y + (hasLabel ? 4 : 22)),
-          w: px(w),
+          x: px(g.x),
+          y: px(g.y + (hasLabel ? 4 : 22)),
+          w: px(g.w),
           h: px(hasLabel ? 52 : 56),
           text: icon,
           text_size: px(hasLabel ? 40 : 44),
@@ -451,9 +466,9 @@ Page(
         iconText.addEventListener(event.CLICK_DOWN, fireOnce)
         if (hasLabel) {
           const labelText = container.createWidget(widget.TEXT, {
-            x: px(x + 4),
-            y: px(y + 60),
-            w: px(w - 8),
+            x: px(g.x + 4),
+            y: px(g.y + 60),
+            w: px(g.w - 8),
             h: px(32),
             text: btn.label,
             text_size: px(20),
@@ -495,14 +510,13 @@ Page(
   repaintButton(ref) {
     const btn = ref.cfg
     const normal = hexColor(ref.on ? btn.colorOn : btn.colorOff, '#546E7A')
-    const wide = btn.size === 'l'
-    const w = wide ? CELL_W * 2 + GAP : CELL_W
+    const g = buttonGeom(btn)
     ref.widget.setProperty(prop.MORE, {
-      x: px(MARGIN + (wide ? 0 : btn.slot % 2) * (CELL_W + GAP)),
-      y: px(GRID_TOP + Math.floor(btn.slot / 2) * (CELL_H + GAP)),
-      w: px(w),
-      h: px(CELL_H),
-      radius: radiusFor(btn.shape, w, CELL_H),
+      x: px(g.x),
+      y: px(g.y),
+      w: px(g.w),
+      h: px(g.h),
+      radius: g.radius,
       normal_color: normal,
       press_color: dim(normal),
     })
