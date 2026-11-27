@@ -127,7 +127,7 @@ AppSettingsPage({
         gettext('status_ok') +
           (st.version ? ' — v' + st.version : '') +
           ', ' + gettext('areas') + ': ' + st.areasCount +
-          (st.areasCount === 0
+          ((st.areaStateCount || 0) === 0
             ? ' (' + gettext('areas_debug') + ': ' + (st.areaSource || '?') + '/' + (st.areaMapped != null ? st.areaMapped : '?') + ')'
             : '') +
           ', ' + gettext('entities') + ': ' + st.entitiesCount +

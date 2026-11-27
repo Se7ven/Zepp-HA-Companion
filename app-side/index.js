@@ -89,20 +89,27 @@ async function haFetchText(ha, path) {
 }
 
 /**
- * Entity -> area map with diagnostics. Strategies:
- * 1) /api/template + area_id() — works on HA >= 2021.6;
- * 2) legacy registry REST /api/config/entity_registry/list — covers setups
- *    where the template endpoint is blocked or altered by a proxy.
- * Returns { map, source, mapped }; source is 'template' | 'registry' | 'none'.
+ * POST raw text body (used for /api/template). Some reverse proxies/WAFs block
+ * GET /api/template?template=... (405) but pass POST with text/plain bodies.
  */
-async function haAreaMap(ha) {
-  try {
-    const template =
-      '{% for s in states %}{{ s.entity_id }}|{{ area_id(s.entity_id) }}\n{% endfor %}'
-    const raw = await haFetchText(ha, '/api/template?template=' + encodeURIComponent(template))
-    const map = {}
-    let parsed = 0
-    raw.split('\n').forEach((line) => {
+async function haPostText(ha, path, body) {
+  const response = await fetch({
+    url: `${ha.url}${path}`,
+    method: 'POST',
+    headers: { Authorization: `Bearer ${ha.token}`, 'Content-Type': 'text/plain' },
+    body,
+    timeout: 15000,
+  })
+  return typeof response.body === 'string' ? response.body : String(response.body)
+}
+
+/** Parse `entity|area` lines from a template response into map/mapped. */
+function parseAreaLines(raw) {
+  const map = {}
+  let parsed = 0
+  String(raw)
+    .split('\n')
+    .forEach((line) => {
       const i = line.indexOf('|')
       if (i <= 0) return
       const entity = line.slice(0, i).trim()
@@ -112,14 +119,36 @@ async function haAreaMap(ha) {
       map[entity] = area
       parsed++
     })
-    if (parsed > 0) {
-      let mapped = 0
-      Object.keys(map).forEach((k) => map[k] && mapped++)
-      return { map, source: 'template', mapped }
-    }
-    logger.log('area template produced nothing, raw head:', String(raw).slice(0, 120))
+  let mapped = 0
+  Object.keys(map).forEach((k) => map[k] && mapped++)
+  return { map, parsed, mapped }
+}
+
+/**
+ * Entity -> area map with diagnostics. Strategies:
+ * 1) POST /api/template + area_id() — the WAF-friendly form (GET may be blocked);
+ * 2) GET /api/template?template= — older/simpler setups;
+ * 3) legacy registry REST /api/config/entity_registry/list — when the template
+ *    endpoint is unavailable (note: misses device-inherited areas).
+ * Returns { map, source, mapped }; source is 'template' | 'template-get' | 'registry' | 'none'.
+ */
+async function haAreaMap(ha) {
+  const template = '{% for s in states %}{{ s.entity_id }}|{{ area_id(s.entity_id) }}\n{% endfor %}'
+  try {
+    const raw = await haPostText(ha, '/api/template', template)
+    const r = parseAreaLines(raw)
+    if (r.parsed > 0) return { map: r.map, source: 'template', mapped: r.mapped }
+    logger.log('area template(POST) produced nothing, raw head:', String(raw).slice(0, 120))
   } catch (e) {
-    logger.log('area template failed', e)
+    logger.log('area template(POST) failed', e)
+  }
+  try {
+    const raw = await haFetchText(ha, '/api/template?template=' + encodeURIComponent(template))
+    const r = parseAreaLines(raw)
+    if (r.parsed > 0) return { map: r.map, source: 'template-get', mapped: r.mapped }
+    logger.log('area template(GET) produced nothing, raw head:', String(raw).slice(0, 120))
+  } catch (e) {
+    logger.log('area template(GET) failed', e)
   }
   try {
     const raw = await haFetchText(ha, '/api/config/entity_registry/list')
@@ -223,14 +252,22 @@ async function discover(ctx) {
         const missing = list.filter((id) => !areaNames[id])
         if (missing.length) {
           const t = '{% for a in [' + missing.map((id) => JSON.stringify(id)).join(',') + '] %}{{ a }}|{{ area_name(a) }}\n{% endfor %}'
-          const raw = await haFetchText(ha, '/api/template?template=' + encodeURIComponent(t))
-          raw.split('\n').forEach((line) => {
-            const i = line.indexOf('|')
-            if (i <= 0) return
-            const id = line.slice(0, i)
-            let name = line.slice(i + 1).trim()
-            if (name && name !== 'None') areaNames[id] = name
-          })
+          let raw = ''
+          try {
+            raw = await haPostText(ha, '/api/template', t)
+          } catch (e) {
+            logger.log('area names template(POST) failed, trying GET', e)
+            raw = await haFetchText(ha, '/api/template?template=' + encodeURIComponent(t))
+          }
+          String(raw)
+            .split('\n')
+            .forEach((line) => {
+              const i = line.indexOf('|')
+              if (i <= 0) return
+              const id = line.slice(0, i)
+              let name = line.slice(i + 1).trim()
+              if (name && name !== 'None') areaNames[id] = name
+            })
         }
       }
     } catch (e) {
@@ -276,6 +313,7 @@ async function discover(ctx) {
       hiddenCount: hidden,
       areaSource: areaRes.source,
       areaMapped: areaRes.mapped,
+      areaStateCount: areaList.filter((a) => a.id !== '__none__').length,
     })
   } catch (error) {
     logger.log('discover error', error)
