@@ -1,6 +1,19 @@
 import { createWidget, widget, align, text_style, prop, deleteWidget, event } from '@zos/ui'
 import { px } from '@zos/utils'
-import { gettext } from 'i18n'
+import { getText } from '@zos/i18n'
+
+// NOTE: the legacy `i18n` module compiles to a console.log stub when
+// apiVersion.minVersion >= 2.0 (device builds) — gettext() returns undefined there.
+// @zos/i18n getText is the supported API for 4.0 builds; the wrapper keeps a
+// key fallback so a missing translation never blanks the UI.
+const gettext = (key) => {
+  try {
+    const value = getText(key)
+    return typeof value === 'string' && value ? value : key
+  } catch (e) {
+    return key
+  }
+}
 import { log } from '@zos/utils'
 import { BasePage } from '@zeppos/zml/base-page'
 import { splitEntity, isActionable } from '../../utils/ha'

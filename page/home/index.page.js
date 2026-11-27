@@ -1,6 +1,19 @@
 import { createWidget, widget, align, text_style, prop, deleteWidget, event } from '@zos/ui'
 import { px } from '@zos/utils'
-import { gettext } from 'i18n'
+import { getText } from '@zos/i18n'
+
+// NOTE: the legacy `i18n` module compiles to a console.log stub when
+// apiVersion.minVersion >= 2.0 (device builds) — gettext() returns undefined there.
+// @zos/i18n getText is the supported API for 4.0 builds; the wrapper keeps a
+// key fallback so a missing translation never blanks the UI.
+const gettext = (key) => {
+  try {
+    const value = getText(key)
+    return typeof value === 'string' && value ? value : key
+  } catch (e) {
+    return key
+  }
+}
 import { setScrollMode, SCROLL_MODE_SWIPER_HORIZONTAL } from '@zos/page'
 import { push, replace } from '@zos/router'
 import { log } from '@zos/utils'
@@ -257,11 +270,6 @@ Page(
           h_space: 8,
           select_src: 'image/dot-on.png',
           unselect_src: 'image/dot-off.png',
-          use_color: true,
-          select_color: 0xffffff,
-          unselect_color: 0x666666,
-          element_height: px(12),
-          element_radius: px(12),
         })
       }
     } catch (e) {
@@ -470,7 +478,7 @@ Page(
     }
     const status = hub.status
     if (status && status.ok) {
-      return { text: gettext('connected') + ' v' + (status.version || '?'), color: 0x81c784 }
+      return { text: gettext('connected') + (status.version ? ' v' + status.version : ''), color: 0x81c784 }
     }
     if (status && status.message) {
       return { text: gettext('error_connection') + ': ' + status.message, color: 0xe57373 }

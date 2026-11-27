@@ -79,7 +79,12 @@ AppSettingsPage({
   },
 
   status() {
-    return readJson(this.props, STORAGE_KEYS.HA_STATUS, null)
+    const st = readJson(this.props, STORAGE_KEYS.HA_STATUS, null)
+    if (st && !st.version) {
+      const data = readJson(this.props, STORAGE_KEYS.HA_DATA, null)
+      if (data && data.version) st.version = data.version
+    }
+    return st
   },
 
   /* --------------------------- shared pieces -------------------------- */
@@ -105,7 +110,7 @@ AppSettingsPage({
     }
     return Text(
       { style: { color: '#43A047', fontSize: '13px' } },
-      [gettext('status_ok') + ' — v' + (st.version || '?') + ', ' + gettext('areas') + ': ' + st.areasCount + ', ' + gettext('entities') + ': ' + st.entitiesCount]
+      [gettext('status_ok') + (st.version ? ' — v' + st.version : '') + ', ' + gettext('areas') + ': ' + st.areasCount + ', ' + gettext('entities') + ': ' + st.entitiesCount]
     )
   },
 

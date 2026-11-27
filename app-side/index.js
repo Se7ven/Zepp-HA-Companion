@@ -269,6 +269,8 @@ AppSideService(
           const config = readJson(STORAGE_KEYS.HA_CONFIG, defaultConfig())
           const status = readJson(STORAGE_KEYS.HA_STATUS, null)
           const data = readJson(STORAGE_KEYS.HA_DATA, null)
+          // older/partial statuses may miss the version — fall back to the one cached by discover()
+          if (status && !status.version && data && data.version) status.version = data.version
           const cache = readCache()
           const areaNames = {}
           if (data && data.areas) data.areas.forEach((a) => (areaNames[a.id] = a.name))
