@@ -72,15 +72,11 @@ function dim(color) {
   return ((r << 16) | (g << 8) | b) & 0xffffff
 }
 
-function radiusFor(shape, w, h) {
-  if (shape === 'rect') return px(6)
-  if (shape === 'round') return px(24)
-  return px(Math.floor(Math.min(w, h) / 2))
-}
-
-// A BUTTON widget with a large radius on a wide cell renders as a stretched
-// pill, not a circle — for 'circle' we shrink the button to a square (cell
-// height) and center it inside its grid cell.
+// Geometry of a widget-screen button. A BUTTON widget with a large radius on a
+// wide cell renders as a stretched pill, not a circle — for 'circle' the button
+// is shrunk to a square (cell height) and centered inside its grid cell.
+// Radius must be in px() units and >= min(w,h)/2 to look like a true circle
+// (verified against device firmware in the simulator).
 function buttonGeom(btn) {
   const wide = btn.size === 'l'
   const cellW = wide ? CELL_W * 2 + GAP : CELL_W
@@ -89,13 +85,17 @@ function buttonGeom(btn) {
   let w = cellW
   let x = MARGIN + col * (CELL_W + GAP)
   const y = GRID_TOP + row * (CELL_H + GAP)
-  let radius = 0
+  let radius
   if (btn.shape === 'circle') {
     w = CELL_H
     x += Math.floor((cellW - CELL_H) / 2)
-    radius = Math.floor(CELL_H / 2)
+    radius = px(Math.floor(CELL_H / 2))
+  } else if (btn.shape === 'round') {
+    radius = px(24)
+  } else {
+    radius = px(6)
   }
-  return { x, y, w, h: CELL_H, radius: radiusFor(btn.shape, w, h) }
+  return { x, y, w, h: CELL_H, radius }
 }
 
 Page(
