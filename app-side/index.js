@@ -239,7 +239,14 @@ async function discover(ctx) {
 
     const areas = {}
     const entities = []
+    let hidden = 0
     ;(states || []).forEach((s) => {
+      // entities hidden in the HA UI (attributes.hidden_at) are noise for the watch lists
+      const hiddenAt = s.attributes && s.attributes.hidden_at
+      if (Array.isArray(hiddenAt) ? hiddenAt.length > 0 : !!hiddenAt) {
+        hidden++
+        return
+      }
       const areaId = areaMap[s.entity_id] || ''
       if (areaId && !areas[areaId]) {
         areas[areaId] = { id: areaId, name: areaNames[areaId] || areaId }
@@ -266,6 +273,7 @@ async function discover(ctx) {
       version: info.version || '',
       areasCount: areaList.length,
       entitiesCount: entities.length,
+      hiddenCount: hidden,
       areaSource: areaRes.source,
       areaMapped: areaRes.mapped,
     })

@@ -130,7 +130,8 @@ AppSettingsPage({
           (st.areasCount === 0
             ? ' (' + gettext('areas_debug') + ': ' + (st.areaSource || '?') + '/' + (st.areaMapped != null ? st.areaMapped : '?') + ')'
             : '') +
-          ', ' + gettext('entities') + ': ' + st.entitiesCount,
+          ', ' + gettext('entities') + ': ' + st.entitiesCount +
+          (st.hiddenCount ? ' (' + gettext('hidden_entities') + ': ' + st.hiddenCount + ')' : ''),
       ]
     )
   },

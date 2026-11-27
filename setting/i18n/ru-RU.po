@@ -234,3 +234,6 @@ msgstr "Без зоны"
 
 msgid "areas_debug"
 msgstr "карта зон"
+
+msgid "hidden_entities"
+msgstr "скрыто"

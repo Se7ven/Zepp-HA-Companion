@@ -234,3 +234,6 @@ msgstr "Unassigned"
 
 msgid "areas_debug"
 msgstr "area map"
+
+msgid "hidden_entities"
+msgstr "hidden"
