@@ -79,16 +79,21 @@ function dim(color) {
 // (verified against device firmware in the simulator).
 function buttonGeom(btn) {
   const wide = btn.size === 'l'
+  const tiny = btn.size === 'xs'
   const cellW = wide ? CELL_W * 2 + GAP : CELL_W
   const col = wide ? 0 : btn.slot % 2
   const row = Math.floor(btn.slot / 2)
   let w = cellW
   let x = MARGIN + col * (CELL_W + GAP)
   const y = GRID_TOP + row * (CELL_H + GAP)
-  let radius
-  if (btn.shape === 'circle') {
+  // Quarter-width ('xs') buttons are centered inside their half-width grid cell;
+  // 'circle' buttons are always square (cell height) so they render as true circles.
+  if (btn.shape === 'circle' || tiny) {
     w = CELL_H
     x += Math.floor((cellW - CELL_H) / 2)
+  }
+  let radius
+  if (btn.shape === 'circle') {
     radius = px(Math.floor(CELL_H / 2))
   } else if (btn.shape === 'round') {
     radius = px(24)

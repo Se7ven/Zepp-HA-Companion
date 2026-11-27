@@ -61,8 +61,9 @@ export const SHAPES = [
 ]
 
 export const SIZES = [
-  { name: 'Small (1 cell)', value: 's' },
-  { name: 'Wide (full row)', value: 'l' },
+  { name: 'Small (1/4 width)', value: 'xs' },
+  { name: 'Medium (1 cell)', value: 's' },
+  { name: 'Large (full row)', value: 'l' },
 ]
 
 export const ACTIONS = [
