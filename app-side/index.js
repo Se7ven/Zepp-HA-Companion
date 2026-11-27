@@ -93,10 +93,14 @@ async function haFetchText(ha, path) {
  * GET /api/template?template=... (405) but pass POST with text/plain bodies.
  */
 async function haPostText(ha, path, body) {
+  return haPost(ha, path, body, 'text/plain')
+}
+
+async function haPost(ha, path, body, contentType) {
   const response = await fetch({
     url: `${ha.url}${path}`,
     method: 'POST',
-    headers: { Authorization: `Bearer ${ha.token}`, 'Content-Type': 'text/plain' },
+    headers: { Authorization: `Bearer ${ha.token}`, 'Content-Type': contentType },
     body,
     timeout: 15000,
   })
@@ -141,6 +145,16 @@ async function haAreaMap(ha) {
     logger.log('area template(POST) produced nothing, raw head:', String(raw).slice(0, 120))
   } catch (e) {
     logger.log('area template(POST) failed', e)
+  }
+  // Some phone bridges/proxies mangle text/plain POST bodies (HA then answers 400).
+  // HA also accepts the canonical JSON form {"template": "..."} — try that transport.
+  try {
+    const raw = await haPost(ha, '/api/template', JSON.stringify({ template }), 'application/json')
+    const r = parseAreaLines(raw)
+    if (r.parsed > 0) return { map: r.map, source: 'template-json', mapped: r.mapped }
+    logger.log('area template(POST json) produced nothing, raw head:', String(raw).slice(0, 120))
+  } catch (e) {
+    logger.log('area template(POST json) failed', e)
   }
   try {
     const raw = await haFetchText(ha, '/api/template?template=' + encodeURIComponent(template))
@@ -187,8 +201,9 @@ async function probe(ha, path, method, body, contentType) {
       timeout: 15000,
     })
     const code = response && (response.status || response.statusCode || response.code)
-    const raw = response && (typeof response.body === 'string' ? response.body : String(response.body))
-    return 'HTTP ' + code + ' | ' + String(raw || '').slice(0, 70).replace(/\n/g, '\\n')
+// Body may be auto-parsed by the phone bridge (objects for JSON responses) — stringify.
+    const raw = response && (typeof response.body === 'string' ? response.body : JSON.stringify(response.body))
+    return 'HTTP ' + code + ' (' + typeof response.body + ') | ' + String(raw || '').slice(0, 140).replace(/\n/g, '\\n')
   } catch (e) {
     return 'ERR ' + String((e && (e.errMsg || e.message)) || e).slice(0, 70)
   }
@@ -219,6 +234,12 @@ async function runAreaDiag() {
     push('6 GET /api/areas -> ' + (await probe(ha, '/api/areas', 'GET')))
     const am = await haAreaMap(ha)
     push('7 haAreaMap -> ' + am.source + ' entries=' + Object.keys(am.map).length + ' mapped=' + am.mapped)
+    // transport variants that may survive bridge/proxy body mangling:
+    push('8 POST tpl json-str -> ' + (await probe(ha, '/api/template', 'POST', JSON.stringify('1'), 'application/json')))
+    push('9 POST tpl json-obj -> ' + (await probe(ha, '/api/template', 'POST', JSON.stringify({ template: T_FULL }), 'application/json')))
+    push('10 POST tpl no-CT -> ' + (await probe(ha, '/api/template', 'POST', '1')))
+    push('11 POST tpl str-in-CT -> ' + (await probe(ha, '/api/template', 'POST', JSON.stringify('1'), 'text/plain')))
+    push('12 GET tpl plain -> ' + (await probe(ha, '/api/template?template=1', 'GET')))
   } catch (e) {
     push('DIAG_CRASH ' + String((e && e.message) || e).slice(0, 70))
   }
