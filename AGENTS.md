@@ -61,8 +61,10 @@ the `utils/icons.js` header when regenerating the font.
   changes to the watch with `onSettingsChange` → `this.call({ method })` → page `onCall`.
 - **Home Assistant:** REST polling only — Zepp OS exposes **no WebSocket client**, so the decision
   is settled. Discovery (`app-side/index.js: discover()`) fetches entity ids+names from
-  `GET /api/states` and area membership from `GET /api/template` with a Jinja template
-  (`area_id()`/`area_name()`), because the HA area registry is not otherwise reachable.
+  `GET /api/states` and area membership from `POST /api/template` (body) with a Jinja template
+  (`area_id()`/`area_name()`), because the HA area registry is not otherwise reachable and some
+  reverse proxies/WAFs answer **405** to `GET /api/template?template=...` (GET with query works
+  only as a fallback).
   The `/api/template` body is `text/plain` — do **not** JSON.parse it.
 - **Caching & refresh policy:** the side service caches the last successful hub/area responses in
   `settingsStorage.ha_cache` (phone-side). `GET_HUB`/`GET_AREA` are live-first: on HA failure the

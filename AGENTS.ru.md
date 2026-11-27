@@ -62,8 +62,10 @@
   Телефон пушит изменения на часы: `onSettingsChange` → `this.call({ method })` → `onCall` страницы.
 - **Home Assistant:** только REST-поллинг — в Zepp OS **нет WebSocket-клиента**, решение принято.
   Обнаружение (`app-side/index.js: discover()`) получает id и имена сущностей из
-  `GET /api/states`, а принадлежность к локациям — из `GET /api/template` с шаблоном Jinja
-  (`area_id()`/`area_name()`), поскольку реестр локаций HA иначе недоступен.
+  `GET /api/states`, а принадлежность к локациям — из `POST /api/template` (тело запроса) с
+  шаблоном Jinja (`area_id()`/`area_name()`), поскольку реестр локаций HA иначе недоступен, а
+  некоторые реверс-прокси/WAF отвечают **405** на `GET /api/template?template=...` (GET с query —
+  только fallback).
   Ответ `/api/template` — это `text/plain`, его **нельзя** парсить как JSON.
 - **Кэширование и политика обновления:** side-сервис кэширует последние успешные ответы
   хаба/локаций в `settingsStorage.ha_cache` (на телефоне). `GET_HUB`/`GET_AREA` работают

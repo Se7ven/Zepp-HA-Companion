@@ -63,9 +63,10 @@ generowania w nagłówku `utils/icons.js` przy regeneracji czcionki.
   Telefon wysyła zmiany na zegarek: `onSettingsChange` → `this.call({ method })` → `onCall` strony.
 - **Home Assistant:** wyłącznie odpytywanie REST — Zepp OS **nie udostępnia klienta WebSocket**,
   decyzja jest ostateczna. Wykrywanie (`app-side/index.js: discover()`) pobiera identyfikatory
-  i nazwy encji z `GET /api/states`, a przynależność do obszarów z `GET /api/template`
-  z szablonem Jinja (`area_id()`/`area_name()`), ponieważ rejestr obszarów HA jest inaczej
-  niedostępny. Odpowiedź `/api/template` to `text/plain` — **nie parsuj jej jako JSON**.
+  i nazwy encji z `GET /api/states`, a przynależność do obszarów z `POST /api/template` (ciało
+  żądania) z szablonem Jinja (`area_id()`/`area_name()`), ponieważ rejestr obszarów HA jest inaczej
+  niedostępny, a niektóre reverse proxy/WAF odpowiadają **405** na `GET /api/template?template=...`
+  (GET z query tylko jako fallback). Odpowiedź `/api/template` to `text/plain` — **nie parsuj jej jako JSON**.
 - **Buforowanie i polityka odświeżania:** serwis app-side buforuje ostatnie poprawne odpowiedzi
   huba/obszarów w `settingsStorage.ha_cache` (po stronie telefonu). `GET_HUB`/`GET_AREA` działają
   live-first: przy niedostępności HA zwracane są dane z cache z `cached: true` i `age`,
