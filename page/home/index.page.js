@@ -1,4 +1,4 @@
-import { createWidget, widget, align, text_style, prop, destroyWidget, event } from '@zos/ui'
+import { createWidget, widget, align, text_style, prop, deleteWidget, event } from '@zos/ui'
 import { px } from '@zos/utils'
 import { gettext } from 'i18n'
 import { setScrollMode, SCROLL_MODE_SWIPER_HORIZONTAL } from '@zos/page'
@@ -23,7 +23,7 @@ function errStr(error) {
 function safeDestroy(w) {
   if (!w) return
   try {
-    destroyWidget(w)
+    deleteWidget(w)
   } catch (e) {
     logger.log('safeDestroy failed: ' + errStr(e))
   }
@@ -170,17 +170,23 @@ Page(
   // After the swiper exists, a refresh only repaints button colors + status
   // text in place (re-rendering would tear down widgets mid-swipe).
   paintLiveStates(hub) {
-    const statesById = {}
-    ;(hub.states || []).forEach((s) => (statesById[s.e] = s))
-    this.state.buttonWidgets.forEach((ref) => {
-      const st = statesById[ref.cfg.entity]
-      const on = st ? !!st.on : ref.on
-      if (on !== ref.on) {
-        ref.on = on
-        this.repaintButton(ref)
-      }
-    })
-    this.updateStatusLine(hub)
+    // setProperty on native widgets can throw on some firmwares; a repaint
+    // failure must not be mistaken for a connection error
+    try {
+      const statesById = {}
+      ;(hub.states || []).forEach((s) => (statesById[s.e] = s))
+      this.state.buttonWidgets.forEach((ref) => {
+        const st = statesById[ref.cfg.entity]
+        const on = st ? !!st.on : ref.on
+        if (on !== ref.on) {
+          ref.on = on
+          this.repaintButton(ref)
+        }
+      })
+      this.updateStatusLine(hub)
+    } catch (e) {
+      logger.log('paintLiveStates failed: ' + errStr(e))
+    }
   },
 
   /* ----------------------------- rendering ----------------------------- */
@@ -211,7 +217,7 @@ Page(
   renderInner() {
     const hub = this.state.hub
     if (!hub) return
-    logger.log('render:start d=' + typeof destroyWidget + ' c=' + typeof createWidget)
+    logger.log('render:start d=' + typeof deleteWidget + ' c=' + typeof createWidget)
     this.state.built = true
     if (this.state.loadingText) {
       safeDestroy(this.state.loadingText)
@@ -239,18 +245,25 @@ Page(
     logger.log('render:screens')
 
     try {
-      createWidget(widget.PAGE_INDICATOR, {
-        x: 0,
-        y: px(PAGE_H - 26),
-        w: px(PAGE_W),
-        h: px(12),
-        align_h: align.CENTER_H,
-        h_space: 8,
-        select_color: 0xffffff,
-        unselect_color: 0x666666,
-        total: pageCount,
-        cur_index: 0,
-      })
+      // Docs: select_src/unselect_src are REQUIRED params; total/cur_index do
+      // not exist in the API (dots count comes from setScrollMode count).
+      if (pageCount > 1) {
+        createWidget(widget.PAGE_INDICATOR, {
+          x: 0,
+          y: px(PAGE_H - 26),
+          w: px(PAGE_W),
+          h: px(12),
+          align_h: align.CENTER_H,
+          h_space: 8,
+          select_src: 'image/dot-on.png',
+          unselect_src: 'image/dot-off.png',
+          use_color: true,
+          select_color: 0xffffff,
+          unselect_color: 0x666666,
+          element_height: px(12),
+          element_radius: px(12),
+        })
+      }
     } catch (e) {
       logger.log('indicator failed: ' + errStr(e))
     }

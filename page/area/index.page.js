@@ -1,4 +1,4 @@
-import { createWidget, widget, align, text_style, prop, destroyWidget, event } from '@zos/ui'
+import { createWidget, widget, align, text_style, prop, deleteWidget, event } from '@zos/ui'
 import { px } from '@zos/utils'
 import { gettext } from 'i18n'
 import { log } from '@zos/utils'
@@ -22,7 +22,7 @@ function errStr(error) {
 function safeDestroy(w) {
   if (!w) return
   try {
-    destroyWidget(w)
+    deleteWidget(w)
   } catch (e) {
     logger.log('safeDestroy failed: ' + errStr(e))
   }
@@ -80,18 +80,33 @@ Page(
   },
 
   build() {
-    this.state.loadingText = createWidget(widget.TEXT, {
-      x: 0,
-      y: px(220),
-      w: px(PAGE_W),
-      h: px(40),
-      text: gettext('loading'),
-      text_size: px(28),
-      color: COLOR_TEXT,
-      align_h: align.CENTER_H,
-    })
-    this.load()
-    this.startAutoRefresh()
+    try {
+      this.state.loadingText = createWidget(widget.TEXT, {
+        x: 0,
+        y: px(220),
+        w: px(PAGE_W),
+        h: px(40),
+        text: gettext('loading'),
+        text_size: px(28),
+        color: COLOR_TEXT,
+        align_h: align.CENTER_H,
+      })
+      this.load()
+      this.startAutoRefresh()
+    } catch (e) {
+      logger.log('area build failed: ' + errStr(e))
+      createWidget(widget.TEXT, {
+        x: px(MARGIN),
+        y: px(200),
+        w: px(PAGE_W - MARGIN * 2),
+        h: px(120),
+        text: 'Startup error: ' + errStr(e),
+        text_size: px(22),
+        color: 0xe57373,
+        align_h: align.CENTER_H,
+        text_style: text_style.WRAP,
+      })
+    }
   },
 
   /* Same battery policy as the home page: refresh on open, then at most
@@ -147,6 +162,25 @@ Page(
   },
 
   render(data) {
+    try {
+      this.renderInner(data)
+    } catch (e) {
+      logger.log('area render failed: ' + errStr(e))
+      createWidget(widget.TEXT, {
+        x: px(MARGIN),
+        y: px(200),
+        w: px(PAGE_W - MARGIN * 2),
+        h: px(120),
+        text: 'Render error: ' + errStr(e),
+        text_size: px(22),
+        color: 0xe57373,
+        align_h: align.CENTER_H,
+        text_style: text_style.WRAP,
+      })
+    }
+  },
+
+  renderInner(data) {
     if (this.state.loadingText) {
       safeDestroy(this.state.loadingText)
       this.state.loadingText = null
