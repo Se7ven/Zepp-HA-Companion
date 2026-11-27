@@ -7,6 +7,8 @@ import {
   SIZES,
   ACTIONS,
   SLOT_COUNT,
+  GRID_COLS,
+  GEOM_VERSION,
   HA_URL_EXAMPLE,
 } from '../utils/config/constants'
 import { ICON_CHOICES } from '../utils/icons'
@@ -36,7 +38,9 @@ function domainLabel(domain) {
 function slotOptions() {
   const out = []
   for (let i = 0; i < SLOT_COUNT; i++) {
-    out.push({ name: gettext('slot') + ' ' + (i + 1), value: String(i) })
+    const row = Math.floor(i / GRID_COLS) + 1
+    const col = (i % GRID_COLS) + 1
+    out.push({ name: 'R' + row + 'C' + col, value: String(i) })
   }
   return out
 }
@@ -53,7 +57,19 @@ AppSettingsPage({
   /* ----------------------------- plumbing ----------------------------- */
 
   cfg() {
-    return readJson(this.props, STORAGE_KEYS.HA_CONFIG, defaultConfig())
+    const config = readJson(this.props, STORAGE_KEYS.HA_CONFIG, defaultConfig())
+    if (!config.geom) {
+      // migration to the GEOM 2 quarter-grid: remap legacy 2-column slots
+      // (2 -> 4 columns keeps every existing button at its old physical position)
+      ;(config.screens || []).forEach((s) => {
+        ;(s.buttons || []).forEach((b) => {
+          b.slot = Math.floor(b.slot / 2) * 4 + (b.slot % 2) * 2
+        })
+      })
+      config.geom = GEOM_VERSION
+      this.props.settingsStorage.setItem(STORAGE_KEYS.HA_CONFIG, JSON.stringify(config))
+    }
+    return config
   },
 
   saveConfig(config) {
@@ -276,7 +292,7 @@ AppSettingsPage({
           [
             View({ style: { flex: 1 } }, [
               Text({ bold: true }, [b.label || b.entity || gettext('unnamed_button')]),
-              Text({ style: { color: '#888', fontSize: '12px' } }, [b.entity + ' — ' + gettext('slot') + ' ' + b.slot]),
+              Text({ style: { color: '#888', fontSize: '12px' } }, [b.entity + ' — R' + (Math.floor(b.slot / GRID_COLS) + 1) + 'C' + ((b.slot % GRID_COLS) + 1)]),
             ]),
             Button({
               label: gettext('edit'),

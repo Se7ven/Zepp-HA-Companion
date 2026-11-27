@@ -35,10 +35,16 @@ export const SCREEN_COUNT = 6
  */
 export const REFRESH_INTERVAL_MS = 5 * 60 * 1000
 
-/** Grid of button slots on one widget screen: 2 columns x 3 rows */
-export const GRID_COLS = 2
+/**
+ * Grid of button slots on one widget screen: 4 columns x 3 rows of quarter-width
+ * cells (GEOM 2). Sizes occupy: xs = 1 cell, s = 2 cells (half row), l = full row.
+ * Legacy configs (no config.geom) used a 2-column grid — the settings app remaps
+ * their slots on first load and stamps config.geom = GEOM_VERSION.
+ */
+export const GRID_COLS = 4
 export const GRID_ROWS = 3
 export const SLOT_COUNT = GRID_COLS * GRID_ROWS
+export const GEOM_VERSION = 2
 
 /** Color palette shared by phone editor and watch renderer (hex strings) */
 export const PALETTE = [
@@ -90,7 +96,7 @@ export function defaultConfig() {
   for (let i = 0; i < SCREEN_COUNT; i++) {
     screens.push({ id: i, name: 'Screen ' + (i + 1), enabled: i === 0, buttons: [] })
   }
-  return { rev: 1, areas: {}, screens }
+  return { rev: 1, geom: GEOM_VERSION, areas: {}, screens }
 }
 
 /** HA base URL example, must be replaced with real user config */

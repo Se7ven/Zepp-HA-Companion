@@ -18,7 +18,7 @@ import { setScrollMode, SCROLL_MODE_SWIPER_HORIZONTAL } from '@zos/page'
 import { push, replace } from '@zos/router'
 import { log } from '@zos/utils'
 import { BasePage } from '@zeppos/zml/base-page'
-import { REFRESH_INTERVAL_MS } from '../../utils/config/constants'
+import { REFRESH_INTERVAL_MS, GRID_COLS } from '../../utils/config/constants'
 import { ICON_FONT, iconChar } from '../../utils/icons'
 
 const logger = log.getLogger('ha-home')
@@ -50,6 +50,8 @@ const GAP = 12
 const GRID_TOP = 72
 const CELL_W = (PAGE_W - MARGIN * 2 - GAP) / 2
 const CELL_H = 100
+// quarter-width grid cell (GEOM 2): 4 columns — 'xs' buttons and slot indexing
+const QUARTER_W = (PAGE_W - MARGIN * 2 - GAP * 3) / 4
 
 const COLOR_TEXT = 0xffffff
 const COLOR_SUBTLE = 0x9e9e9e
@@ -72,29 +74,38 @@ function dim(color) {
   return ((r << 16) | (g << 8) | b) & 0xffffff
 }
 
-// Geometry of a widget-screen button. A BUTTON widget with a large radius on a
-// wide cell renders as a stretched pill, not a circle — for 'circle' the button
-// is shrunk to a square (cell height) and centered inside its grid cell.
-// Radius must be in px() units and >= min(w,h)/2 to look like a true circle
-// (verified against device firmware in the simulator).
-function buttonGeom(btn) {
+// Geometry of a widget-screen button on the quarter-width grid (GEOM 2):
+// slot = quarter-cell index 0..11; 'xs' takes 1 column, 's' spans 2, 'l' the full
+// row. A BUTTON widget with a large radius on a wide cell renders as a stretched
+// pill, not a circle — 'circle' buttons are shrunk to a square (cell height) and
+// centered inside their span. Radius must be in px() units and >= min(w,h)/2 to
+// look like a true circle (verified against device firmware in the simulator).
+// `legacy` renders configs saved before GEOM 2 (2-column grid) at their old spots.
+function buttonGeom(btn, legacy) {
+  const slot = btn.slot | 0
   const wide = btn.size === 'l'
-  const tiny = btn.size === 'xs'
-  const cellW = wide ? CELL_W * 2 + GAP : CELL_W
-  const col = wide ? 0 : btn.slot % 2
-  const row = Math.floor(btn.slot / 2)
-  let w = cellW
-  let x = MARGIN + col * (CELL_W + GAP)
-  const y = GRID_TOP + row * (CELL_H + GAP)
-  // Quarter-width ('xs') buttons are centered inside their half-width grid cell;
-  // 'circle' buttons are always square (cell height) so they render as true circles.
-  if (btn.shape === 'circle' || tiny) {
-    w = CELL_H
-    x += Math.floor((cellW - CELL_H) / 2)
+  let x
+  let y
+  let w
+  if (legacy) {
+    const col = wide ? 0 : slot % 2
+    const row = Math.floor(slot / 2)
+    x = MARGIN + col * (CELL_W + GAP)
+    y = GRID_TOP + row * (CELL_H + GAP)
+    w = wide ? PAGE_W - MARGIN * 2 : CELL_W
+  } else {
+    const col = wide ? 0 : slot % GRID_COLS
+    const row = Math.floor(slot / GRID_COLS)
+    x = MARGIN + col * (QUARTER_W + GAP)
+    y = GRID_TOP + row * (CELL_H + GAP)
+    w = wide ? PAGE_W - MARGIN * 2 : btn.size === 'xs' ? QUARTER_W : QUARTER_W * 2 + GAP
   }
   let radius
   if (btn.shape === 'circle') {
-    radius = px(Math.floor(CELL_H / 2))
+    const span = w
+    w = Math.min(span, CELL_H)
+    x += Math.floor((span - w) / 2)
+    radius = px(Math.ceil(w / 2))
   } else if (btn.shape === 'round') {
     radius = px(24)
   } else {
@@ -264,6 +275,8 @@ Page(
     logger.log('render:loading-removed')
 
     const config = hub.config || { screens: [] }
+    // configs saved before the quarter-grid (GEOM 2) keep their legacy slot semantics
+    this.state.legacyGeom = !config.geom
     const screens = (config.screens || []).filter((s) => s.enabled)
     const pageCount = 1 + screens.length
 
@@ -422,7 +435,7 @@ Page(
     }
 
     screen.buttons.forEach((btn) => {
-      const g = buttonGeom(btn)
+      const g = buttonGeom(btn, this.state.legacyGeom)
       const st = statesById[btn.entity]
       const ref = {
         cfg: btn,
