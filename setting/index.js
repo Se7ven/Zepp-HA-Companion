@@ -136,6 +136,27 @@ AppSettingsPage({
     )
   },
 
+  /* ----------------------------- diagnostics --------------------------- */
+
+  diagView() {
+    const lines = readJson(this.props, STORAGE_KEYS.HA_DIAG_RESULT, [])
+    const rows = [this.back({ view: 'root' })]
+    if (lines && lines.length) {
+      lines.forEach((l) => rows.push(Text({ style: { color: '#333', fontSize: '11px', padding: '1px 0', 'word-break': 'break-all' } }, [String(l)])))
+    } else {
+      rows.push(Text({ style: { color: '#888', fontSize: '13px' } }, [gettext('diag_wait')]))
+    }
+    rows.push(
+      View({ style: { 'padding-top': '10px' } }, [
+        Button({
+          label: gettext('diag_run'),
+          onClick: () => this.props.settingsStorage.setItem(STORAGE_KEYS.HA_DIAG, String(Date.now())),
+        }),
+      ])
+    )
+    return View({ style: { padding: '12px 16px' } }, rows)
+  },
+
   /* ------------------------------ root view ---------------------------- */
 
   rootView() {
@@ -160,6 +181,14 @@ AppSettingsPage({
             label: gettext('sync'),
             color: 'primary',
             onClick: () => this.props.settingsStorage.setItem(STORAGE_KEYS.HA_SYNC, String(Date.now())),
+          }),
+          Button({
+            label: gettext('diag_areas'),
+            onClick: () => {
+              this.props.settingsStorage.setItem(STORAGE_KEYS.HA_DIAG_RESULT, '')
+              this.props.settingsStorage.setItem(STORAGE_KEYS.HA_DIAG, String(Date.now()))
+              this.nav({ view: 'diag' })
+            },
           }),
           this.statusBlock(),
         ]
@@ -514,6 +543,7 @@ AppSettingsPage({
     if (view === 'area') return this.areaView()
     if (view === 'screens') return this.screensView()
     if (view === 'button') return this.buttonView()
+    if (view === 'diag') return this.diagView()
     return this.rootView()
   },
 })

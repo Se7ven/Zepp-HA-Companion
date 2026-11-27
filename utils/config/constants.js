@@ -22,6 +22,10 @@ export const STORAGE_KEYS = {
   HA_CACHE: 'ha_cache',
   /** JSON: { view, areaId, screen, button } — Settings App navigation state */
   HA_UI: 'ha_ui',
+  /** Trigger: Settings App sets a timestamp to ask Side Service to run the area diagnostics */
+  HA_DIAG: 'ha_diag',
+  /** JSON: string[] — step-by-step area discovery diagnostic report (Side Service -> Settings App) */
+  HA_DIAG_RESULT: 'ha_diag_result',
 }
 
 /** Number of configurable widget screens in the watch app (besides the main one) */

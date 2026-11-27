@@ -169,6 +169,62 @@ async function haAreaMap(ha) {
   return { map: {}, source: 'none', mapped: 0 }
 }
 
+/* ------------------------- area diagnostics -------------------------- */
+/* Remote debugging aid: probes every endpoint area discovery depends on and  */
+/* stores a step-by-step report in settingsStorage (`ha_diag_result`), which  */
+/* the Settings app renders. Triggered by writing `ha_diag` (Settings →       */
+/* "Area diagnostics"). Lines stay short — zml/storage payloads are small.    */
+
+async function probe(ha, path, method, body, contentType) {
+  try {
+    const headers = { Authorization: `Bearer ${ha.token}` }
+    if (contentType) headers['Content-Type'] = contentType
+    const response = await fetch({
+      url: `${ha.url}${path}`,
+      method,
+      headers,
+      body,
+      timeout: 15000,
+    })
+    const code = response && (response.status || response.statusCode || response.code)
+    const raw = response && (typeof response.body === 'string' ? response.body : String(response.body))
+    return 'HTTP ' + code + ' | ' + String(raw || '').slice(0, 70).replace(/\n/g, '\\n')
+  } catch (e) {
+    return 'ERR ' + String((e && (e.errMsg || e.message)) || e).slice(0, 70)
+  }
+}
+
+async function runAreaDiag() {
+  const lines = []
+  const push = (s) => {
+    lines.push(s)
+    logger.log('diag', s)
+  }
+  writeJson(STORAGE_KEYS.HA_DIAG_RESULT, lines) // progressive: UI shows steps as they land
+  try {
+    const ha = getHaConfig()
+    push('DIAG ' + new Date().toISOString())
+    if (!ha) {
+      push('HA_NOT_CONFIGURED')
+      writeJson(STORAGE_KEYS.HA_DIAG_RESULT, lines)
+      return
+    }
+    push('url: ' + ha.url + ' token:' + ha.token.length + 'ch')
+    const T_FULL = '{% for s in states %}{{ s.entity_id }}|{{ area_id(s.entity_id) }}\n{% endfor %}'
+    push('1 GET /api/ -> ' + (await probe(ha, '/api/', 'GET')))
+    push('2 POST tpl "1" -> ' + (await probe(ha, '/api/template', 'POST', '1', 'text/plain')))
+    push('3 POST tpl FULL -> ' + (await probe(ha, '/api/template', 'POST', T_FULL, 'text/plain')))
+    push('4 GET tpl -> ' + (await probe(ha, '/api/template?template=' + encodeURIComponent(T_FULL), 'GET')))
+    push('5 GET registry -> ' + (await probe(ha, '/api/config/entity_registry/list', 'GET')))
+    push('6 GET /api/areas -> ' + (await probe(ha, '/api/areas', 'GET')))
+    const am = await haAreaMap(ha)
+    push('7 haAreaMap -> ' + am.source + ' entries=' + Object.keys(am.map).length + ' mapped=' + am.mapped)
+  } catch (e) {
+    push('DIAG_CRASH ' + String((e && e.message) || e).slice(0, 70))
+  }
+  writeJson(STORAGE_KEYS.HA_DIAG_RESULT, lines)
+}
+
 /** Compact entity states list [{e, n, s, on}] for the given ids (or all actionable). */
 async function haCompactStates(ha, wantedIds) {
   const states = await haGetStates(ha)
@@ -515,6 +571,8 @@ AppSideService(
         logger.log('settingsChange', key, JSON.stringify(evt || ''))
         if (key === STORAGE_KEYS.HA_SYNC) {
           discover(this)
+        } else if (key === STORAGE_KEYS.HA_DIAG) {
+          runAreaDiag()
         } else if (key === STORAGE_KEYS.HA_CONFIG) {
           this.call({ method: 'config.changed', params: {} })
         }

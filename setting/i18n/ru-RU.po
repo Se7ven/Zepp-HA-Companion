@@ -237,3 +237,12 @@ msgstr "карта зон"
 
 msgid "hidden_entities"
 msgstr "скрыто"
+
+msgid "diag_areas"
+msgstr "Диагностика зон"
+
+msgid "diag_wait"
+msgstr "Диагностика выполняется… вернитесь сюда через несколько секунд"
+
+msgid "diag_run"
+msgstr "Повторить"

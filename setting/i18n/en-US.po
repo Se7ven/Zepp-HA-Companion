@@ -237,3 +237,12 @@ msgstr "area map"
 
 msgid "hidden_entities"
 msgstr "hidden"
+
+msgid "diag_areas"
+msgstr "Area diagnostics"
+
+msgid "diag_wait"
+msgstr "Running diagnostics… reopen this screen after a few seconds"
+
+msgid "diag_run"
+msgstr "Re-run"
