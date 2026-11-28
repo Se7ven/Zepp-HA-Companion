@@ -246,3 +246,8 @@ msgstr "Running diagnostics… reopen this screen after a few seconds"
 
 msgid "diag_run"
 msgstr "Re-run"
+msgid "pick_entity"
+msgstr "Tap to select"
+
+msgid "by_type"
+msgstr "By type"

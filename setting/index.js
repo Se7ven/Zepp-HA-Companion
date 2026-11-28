@@ -264,6 +264,57 @@ AppSettingsPage({
 
   /* ------------------------ area entity selection ---------------------- */
 
+  ePickerView() {
+    const rows = [this.back({ view: 'button', domain: null })]
+    const data = this.data()
+    if (!data || !data.entities || !data.entities.length) {
+      rows.push(Text({ style: { color: '#888', fontSize: '13px' } }, [gettext('diag_wait')]))
+      return View({ style: { padding: '12px 16px' } }, rows)
+    }
+    const counts = {}
+    data.entities.forEach((e) => {
+      counts[e.d] = (counts[e.d] || 0) + 1
+    })
+    const domains = Object.keys(counts).sort((a, b) => (domainLabel(a) > domainLabel(b) ? 1 : -1))
+    rows.push(
+      Section(
+        { title: gettext('by_type') },
+        domains.map((d) =>
+          Button({
+            label: domainLabel(d) + ' — ' + counts[d],
+            onClick: () => this.nav({ view: 'elist', domain: d }),
+          })
+        )
+      )
+    )
+    return View({ style: { padding: '12px 16px' } }, rows)
+  },
+
+  eListView() {
+    const ui = this.ui()
+    const rows = [this.back({ view: 'epicker' })]
+    const data = this.data()
+    const entities = data && ui.domain ? data.entities.filter((e) => e.d === ui.domain) : []
+    rows.push(
+      Section(
+        { title: domainLabel(ui.domain) + ': ' + entities.length },
+        entities.map((e) =>
+          Button({
+            label: e.n,
+            onClick: () => {
+              const patch = { entity: e.e }
+              const cur = this.editVal()
+              if (!cur.label) patch.label = e.n
+              this.setEdit(patch)
+              this.nav({ view: 'button', domain: null })
+            },
+          })
+        )
+      )
+    )
+    return View({ style: { padding: '12px 16px' } }, rows)
+  },
+
   areaView() {
     const ui = this.ui()
     const data = this.data()
@@ -428,10 +479,9 @@ AppSettingsPage({
     const edit = this.editVal()
     const rows = [this.back({ view: 'screens', button: null, edit: null })]
 
-    const entityOptions = (data ? data.entities : []).map((e) => ({
-      name: e.n + ' (' + (e.a ? 'area' : domainLabel(e.d)) + ')',
-      value: e.e,
-    }))
+    const entityName = edit.entity
+      ? (data ? data.entities : []).filter((e) => e.e === edit.entity)[0]
+      : null
     const toggleColors = [
       Select({
         label: gettext('color_on'),
@@ -451,18 +501,9 @@ AppSettingsPage({
       Section(
         { title: gettext('button_settings') },
         [
-          Select({
-            label: gettext('entity'),
-            options: entityOptions,
-            value: edit.entity,
-            onChange: (v) => {
-              const patch = { entity: v }
-              if (!edit.label) {
-                const found = (data ? data.entities : []).filter((e) => e.e === v)[0]
-                if (found) patch.label = found.n
-              }
-              this.setEdit(patch)
-            },
+          Button({
+            label: gettext('entity') + ': ' + (entityName ? entityName.n : gettext('pick_entity')),
+            onClick: () => this.nav({ view: 'epicker' }),
           }),
           TextInput({
             label: gettext('button_text'),
@@ -543,6 +584,8 @@ AppSettingsPage({
     if (view === 'area') return this.areaView()
     if (view === 'screens') return this.screensView()
     if (view === 'button') return this.buttonView()
+    if (view === 'epicker') return this.ePickerView()
+    if (view === 'elist') return this.eListView()
     if (view === 'diag') return this.diagView()
     return this.rootView()
   },

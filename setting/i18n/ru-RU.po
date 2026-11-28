@@ -246,3 +246,8 @@ msgstr "Диагностика выполняется… вернитесь сю
 
 msgid "diag_run"
 msgstr "Повторить"
+msgid "pick_entity"
+msgstr "Нажмите, чтобы выбрать"
+
+msgid "by_type"
+msgstr "По типу"
