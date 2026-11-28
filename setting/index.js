@@ -42,6 +42,20 @@ const EDITOR_DEFAULTS = {
 }
 
 /*
+ * The phone settings runtime flows sibling components INLINE: consecutive
+ * Texts merge onto one line and Buttons pack two-per-row. The only proven
+ * block-level control is a dedicated View per row — hence block()/descText()
+ * wrappers around every row-like component below.
+ */
+function block(children, style) {
+  return View({ style: Object.assign({ padding: '4px 0' }, style || {}) }, children)
+}
+
+function descText(t) {
+  return block([Text({ style: { color: '#888', fontSize: '12px' } }, [t])], { padding: '2px 0 6px' })
+}
+
+/*
  * Settings App (phone side, runs inside the Zepp App).
  * Fully dynamic: navigation lives in settingsStorage (`ha_ui`), so every
  * interaction re-renders `build` (the Settings App is reactive to storage).
@@ -210,9 +224,9 @@ AppSettingsPage({
     const lines = readJson(this.props, STORAGE_KEYS.HA_DIAG_RESULT, [])
     const rows = [this.back({ view: 'root' })]
     if (lines && lines.length) {
-      lines.forEach((l) => rows.push(Text({ style: { color: '#333', fontSize: '11px', padding: '1px 0', 'word-break': 'break-all' } }, [String(l)])))
+      lines.forEach((l) => rows.push(block([Text({ style: { color: '#333', fontSize: '11px', 'word-break': 'break-all' } }, [String(l)])], { padding: '1px 0' })))
     } else {
-      rows.push(Text({ style: { color: '#888', fontSize: '13px' } }, [gettext('diag_wait')]))
+      rows.push(block([Text({ style: { color: '#888', fontSize: '13px' } }, [gettext('diag_wait')])]))
     }
     rows.push(
       View({ style: { 'padding-top': '10px' } }, [
@@ -231,8 +245,9 @@ AppSettingsPage({
     const data = this.data()
     const items = [
       Section(
-        { title: gettext('connection'), description: gettext('connection_desc') },
+        { title: gettext('connection') },
         [
+          descText(gettext('connection_desc')),
           TextInput({
             label: gettext('ha_url'),
             settingsKey: STORAGE_KEYS.HA_URL,
@@ -245,20 +260,24 @@ AppSettingsPage({
             multiline: true,
             rows: 3,
           }),
-          Button({
-            label: gettext('sync'),
-            color: 'primary',
-            onClick: () => this.props.settingsStorage.setItem(STORAGE_KEYS.HA_SYNC, String(Date.now())),
-          }),
-          Button({
-            label: gettext('diag_areas'),
-            onClick: () => {
-              this.props.settingsStorage.setItem(STORAGE_KEYS.HA_DIAG_RESULT, '')
-              this.props.settingsStorage.setItem(STORAGE_KEYS.HA_DIAG, String(Date.now()))
-              this.nav({ view: 'diag' })
-            },
-          }),
-          this.statusBlock(),
+          block([
+            Button({
+              label: gettext('sync'),
+              color: 'primary',
+              onClick: () => this.props.settingsStorage.setItem(STORAGE_KEYS.HA_SYNC, String(Date.now())),
+            }),
+          ]),
+          block([
+            Button({
+              label: gettext('diag_areas'),
+              onClick: () => {
+                this.props.settingsStorage.setItem(STORAGE_KEYS.HA_DIAG_RESULT, '')
+                this.props.settingsStorage.setItem(STORAGE_KEYS.HA_DIAG, String(Date.now()))
+                this.nav({ view: 'diag' })
+              },
+            }),
+          ]),
+          block([this.statusBlock()]),
         ]
       ),
     ]
@@ -266,29 +285,35 @@ AppSettingsPage({
     if (data) {
       items.push(
         Section(
-          { title: gettext('main_screen'), description: gettext('main_screen_desc') },
+          { title: gettext('main_screen') },
           [
-            Text({}, [gettext('areas') + ': ' + data.areas.length + ', ' + gettext('entities') + ': ' + data.entities.length]),
-            Button({
-              label: gettext('configure'),
-              onClick: () => this.nav({ view: 'main' }),
-            }),
+            descText(gettext('main_screen_desc')),
+            block([Text({}, [gettext('areas') + ': ' + data.areas.length + ', ' + gettext('entities') + ': ' + data.entities.length])]),
+            block([
+              Button({
+                label: gettext('configure'),
+                onClick: () => this.nav({ view: 'main' }),
+              }),
+            ]),
           ]
         ),
         Section(
-          { title: gettext('widget_screens'), description: gettext('widget_screens_desc') },
+          { title: gettext('widget_screens') },
           [
-            Button({
-              label: gettext('configure'),
-              onClick: () => this.nav({ view: 'screens' }),
-            }),
+            descText(gettext('widget_screens_desc')),
+            block([
+              Button({
+                label: gettext('configure'),
+                onClick: () => this.nav({ view: 'screens' }),
+              }),
+            ]),
           ]
         )
       )
     } else {
-      items.push(Text({ style: { color: '#888', fontSize: '13px' } }, [gettext('sync_hint')]))
+      items.push(block([Text({ style: { color: '#888', fontSize: '13px' } }, [gettext('sync_hint')])]))
     }
-    items.push(Text({ style: { color: '#aaa', fontSize: '11px', marginTop: '16px' } }, ['Zepp HA Companion v0.4.0']))
+    items.push(block([Text({ style: { color: '#aaa', fontSize: '11px', marginTop: '16px' } }, ['Zepp HA Companion v0.4.0'])]))
     return View({ style: { padding: '12px 16px' } }, items)
   },
 
@@ -299,7 +324,7 @@ AppSettingsPage({
     const config = this.cfg()
     const rows = [this.back()]
     if (!data || !data.areas.length) {
-      rows.push(Text({ style: { color: '#888' } }, [gettext('no_areas')]))
+      rows.push(block([Text({ style: { color: '#888' } }, [gettext('no_areas')])]))
       return View({ style: { padding: '12px 16px' } }, rows)
     }
     data.areas.forEach((area) => {
@@ -307,22 +332,27 @@ AppSettingsPage({
       const enabledCount = Object.keys(areaCfg.entities || {}).filter((id) => areaCfg.entities[id]).length
       rows.push(
         Section(
-          { title: area.id === '__none__' ? gettext('area_none') : area.name, description: gettext('enabled_entities') + ': ' + enabledCount },
+          { title: area.id === '__none__' ? gettext('area_none') : area.name },
           [
-            Toggle({
-              label: gettext('show_on_watch'),
-              value: !!areaCfg.enabled,
-              onChange: (v) => {
-                const c = this.cfg()
-                if (!c.areas[area.id]) c.areas[area.id] = { enabled: false, entities: {} }
-                c.areas[area.id].enabled = v
-                this.saveConfig(c)
-              },
-            }),
-            Button({
-              label: gettext('entities'),
-              onClick: () => this.nav({ view: 'area', areaId: area.id }),
-            }),
+            descText(gettext('enabled_entities') + ': ' + enabledCount),
+            block([
+              Toggle({
+                label: gettext('show_on_watch'),
+                value: !!areaCfg.enabled,
+                onChange: (v) => {
+                  const c = this.cfg()
+                  if (!c.areas[area.id]) c.areas[area.id] = { enabled: false, entities: {} }
+                  c.areas[area.id].enabled = v
+                  this.saveConfig(c)
+                },
+              }),
+            ]),
+            block([
+              Button({
+                label: gettext('entities'),
+                onClick: () => this.nav({ view: 'area', areaId: area.id }),
+              }),
+            ]),
           ]
         )
       )
@@ -336,7 +366,7 @@ AppSettingsPage({
     const rows = [this.back({ view: 'button', domain: null })]
     const data = this.data()
     if (!data || !data.entities || !data.entities.length) {
-      rows.push(Text({ style: { color: '#888', fontSize: '13px' } }, [gettext('diag_wait')]))
+      rows.push(block([Text({ style: { color: '#888', fontSize: '13px' } }, [gettext('diag_wait')])]))
       return View({ style: { padding: '12px 16px' } }, rows)
     }
     const counts = {}
@@ -348,16 +378,18 @@ AppSettingsPage({
       Section(
         { title: gettext('by_type') },
         domains.map((d) =>
-          Button({
-            label: domainLabel(d) + ' — ' + counts[d],
-            onClick: () => {
-              // domain goes into ha_config (proven channel), nav only switches view
-              const c = this.cfg()
-              c.__domain = d
-              this.saveConfig(c)
-              this.nav({ view: 'elist' })
-            },
-          })
+          block([
+            Button({
+              label: domainLabel(d) + ' — ' + counts[d],
+              onClick: () => {
+                // domain goes into ha_config (proven channel), nav only switches view
+                const c = this.cfg()
+                c.__domain = d
+                this.saveConfig(c)
+                this.nav({ view: 'elist' })
+              },
+            }),
+          ])
         )
       )
     )
@@ -371,23 +403,25 @@ AppSettingsPage({
     const data = this.data()
     const entities = data && domain ? data.entities.filter((e) => e.d === domain) : []
     rows.push(
-      Text({ bold: true, style: { fontSize: '18px', color: '#2E7D32', margin: '10px 0 2px' } }, [domainLabel(domain) + ': ' + entities.length]),
+      block([Text({ bold: true, style: { fontSize: '18px', color: '#2E7D32' } }, [domainLabel(domain) + ': ' + entities.length])], { padding: '10px 0 2px' }),
       Section(
         {},
         entities.map((e) =>
-          Button({
-            label: e.n,
-            onClick: () => {
-              // draft lives in ha_config; nav only switches the view
-              const cur = this.editVal()
-              const c = this.cfg()
-              const d = Object.assign({}, cur, { entity: e.e })
-              if (!cur.label) d.label = e.n
-              c.__draft = d
-              this.saveConfig(c)
-              this.nav({ view: 'button', domain: null })
-            },
-          })
+          block([
+            Button({
+              label: e.n,
+              onClick: () => {
+                // draft lives in ha_config; nav only switches the view
+                const cur = this.editVal()
+                const c = this.cfg()
+                const d = Object.assign({}, cur, { entity: e.e })
+                if (!cur.label) d.label = e.n
+                c.__draft = d
+                this.saveConfig(c)
+                this.nav({ view: 'button', domain: null })
+              },
+            }),
+          ])
         )
       )
     )
@@ -401,7 +435,7 @@ AppSettingsPage({
     const area = data && data.areas.filter((a) => a.id === ui.areaId)[0]
     const rows = [
       this.back({ view: 'main', areaId: null }),
-      Text({ bold: true, style: { fontSize: '16px', padding: '8px 0' } }, [(area ? (area.id === '__none__' ? gettext('area_none') : area.name) : ui.areaId) + ' — ' + gettext('entities_grouped')]),
+      block([Text({ bold: true, style: { fontSize: '16px' } }, [(area ? (area.id === '__none__' ? gettext('area_none') : area.name) : ui.areaId) + ' — ' + gettext('entities_grouped')])], { padding: '8px 0' }),
     ]
     if (!data) return View({ style: { padding: '12px 16px' } }, rows)
 
@@ -421,25 +455,27 @@ AppSettingsPage({
           .sort((a, b) => (a.n > b.n ? 1 : -1))
           .forEach((e) => {
             items.push(
-              Toggle({
-                label: e.n,
-                value: !!(config.areas[ui.areaId].entities[e.e]),
-                onChange: (v) => {
-                  const c = this.cfg()
-                  if (!c.areas[ui.areaId]) c.areas[ui.areaId] = { enabled: true, entities: {} }
-                  if (v) c.areas[ui.areaId].entities[e.e] = true
-                  else delete c.areas[ui.areaId].entities[e.e]
-                  this.saveConfig(c)
-                },
-              })
+              block([
+                Toggle({
+                  label: e.n,
+                  value: !!(config.areas[ui.areaId].entities[e.e]),
+                  onChange: (v) => {
+                    const c = this.cfg()
+                    if (!c.areas[ui.areaId]) c.areas[ui.areaId] = { enabled: true, entities: {} }
+                    if (v) c.areas[ui.areaId].entities[e.e] = true
+                    else delete c.areas[ui.areaId].entities[e.e]
+                    this.saveConfig(c)
+                  },
+                }),
+              ])
             )
           })
         rows.push(
-          Text({ bold: true, style: { fontSize: '18px', color: '#2E7D32', margin: '10px 0 2px' } }, [domainLabel(domain) + ': ' + entities[domain].length]),
+          block([Text({ bold: true, style: { fontSize: '18px', color: '#2E7D32' } }, [domainLabel(domain) + ': ' + entities[domain].length])], { padding: '10px 0 2px' }),
           Section({}, items)
         )
       })
-    if (rows.length <= 2) rows.push(Text({ style: { color: '#888' } }, [gettext('no_entities')]))
+    if (rows.length <= 2) rows.push(block([Text({ style: { color: '#888' } }, [gettext('no_entities')])]))
     return View({ style: { padding: '12px 16px' } }, rows)
   },
 
@@ -484,15 +520,17 @@ AppSettingsPage({
         Section(
           { title: screen.name },
           [
-            Toggle({
-              label: gettext('enabled'),
-              value: !!screen.enabled,
-              onChange: (v) => {
-                const c = this.cfg()
-                c.screens[si].enabled = v
-                this.saveConfig(c)
-              },
-            }),
+            block([
+              Toggle({
+                label: gettext('enabled'),
+                value: !!screen.enabled,
+                onChange: (v) => {
+                  const c = this.cfg()
+                  c.screens[si].enabled = v
+                  this.saveConfig(c)
+                },
+              }),
+            ]),
             TextInput({
               label: gettext('screen_name'),
               value: screen.name,
@@ -546,7 +584,7 @@ AppSettingsPage({
     const field = this.cfg().__pick
     const rows = [this.back({ view: 'button' })]
     if (!field) {
-      rows.push(Text({ style: { color: '#888' } }, [gettext('diag_wait')]))
+      rows.push(block([Text({ style: { color: '#888' } }, [gettext('diag_wait')])]))
       return View({ style: { padding: '12px 16px' } }, rows)
     }
     const edit = this.editVal()
@@ -556,15 +594,17 @@ AppSettingsPage({
       Section(
         { title: gettext(titleKey) },
         fieldOptions(field).map((o) =>
-          Button({
-            label: (String(o.value) === String(raw) ? '✓ ' : '') + o.name,
-            onClick: () => {
-              const patch = {}
-              patch[field] = field === 'slot' ? parseInt(o.value, 10) : o.value
-              this.setEdit(patch) // draft write only; navigation below is the single ha_ui write
-              this.nav({ view: 'button' })
-            },
-          })
+          block([
+            Button({
+              label: (String(o.value) === String(raw) ? '✓ ' : '') + o.name,
+              onClick: () => {
+                const patch = {}
+                patch[field] = field === 'slot' ? parseInt(o.value, 10) : o.value
+                this.setEdit(patch) // draft write only; navigation below is the single ha_ui write
+                this.nav({ view: 'button' })
+              },
+            }),
+          ])
         )
       )
     )
@@ -625,10 +665,12 @@ AppSettingsPage({
       Section(
         { title: gettext('button_settings') },
         [
-          Button({
-            label: gettext('entity') + ': ' + (entityName ? entityName.n : gettext('pick_entity')),
-            onClick: () => this.nav({ view: 'epicker' }),
-          }),
+          block([
+            Button({
+              label: gettext('entity') + ': ' + (entityName ? entityName.n : gettext('pick_entity')),
+              onClick: () => this.nav({ view: 'epicker' }),
+            }),
+          ]),
           TextInput({
             label: gettext('button_text'),
             // settingsKey-backed: storage-bound TextInputs are the ONLY input
@@ -637,34 +679,48 @@ AppSettingsPage({
             placeholder: '',
             onChange: (v) => this.setEdit({ label: v }),
           }),
-          Button({
-            label: gettext('action') + ': ' + fieldCurrent(edit, 'action'),
-            onClick: () => this.openPicker('action'),
-          }),
-          Button({
-            label: gettext('shape') + ': ' + fieldCurrent(edit, 'shape'),
-            onClick: () => this.openPicker('shape'),
-          }),
-          Button({
-            label: gettext('size') + ': ' + fieldCurrent(edit, 'size'),
-            onClick: () => this.openPicker('size'),
-          }),
-          Button({
-            label: gettext('slot') + ': ' + fieldCurrent(edit, 'slot'),
-            onClick: () => this.openPicker('slot'),
-          }),
-          Button({
-            label: gettext('icon') + ': ' + fieldCurrent(edit, 'icon'),
-            onClick: () => this.openPicker('icon'),
-          }),
-          Button({
-            label: gettext('color_on') + ': ' + edit.colorOn,
-            onClick: () => this.openPicker('colorOn'),
-          }),
-          Button({
-            label: gettext('color_off') + ': ' + edit.colorOff,
-            onClick: () => this.openPicker('colorOff'),
-          }),
+          block([
+            Button({
+              label: gettext('action') + ': ' + fieldCurrent(edit, 'action'),
+              onClick: () => this.openPicker('action'),
+            }),
+          ]),
+          block([
+            Button({
+              label: gettext('shape') + ': ' + fieldCurrent(edit, 'shape'),
+              onClick: () => this.openPicker('shape'),
+            }),
+          ]),
+          block([
+            Button({
+              label: gettext('size') + ': ' + fieldCurrent(edit, 'size'),
+              onClick: () => this.openPicker('size'),
+            }),
+          ]),
+          block([
+            Button({
+              label: gettext('slot') + ': ' + fieldCurrent(edit, 'slot'),
+              onClick: () => this.openPicker('slot'),
+            }),
+          ]),
+          block([
+            Button({
+              label: gettext('icon') + ': ' + fieldCurrent(edit, 'icon'),
+              onClick: () => this.openPicker('icon'),
+            }),
+          ]),
+          block([
+            Button({
+              label: gettext('color_on') + ': ' + edit.colorOn,
+              onClick: () => this.openPicker('colorOn'),
+            }),
+          ]),
+          block([
+            Button({
+              label: gettext('color_off') + ': ' + edit.colorOff,
+              onClick: () => this.openPicker('colorOff'),
+            }),
+          ]),
         ]
       ),
       View(
