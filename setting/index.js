@@ -8,6 +8,7 @@ import {
   ACTIONS,
   SLOT_COUNT,
   GRID_COLS,
+  GRID_ROWS,
   GEOM_VERSION,
   HA_URL_EXAMPLE,
 } from '../utils/config/constants'
@@ -76,6 +77,45 @@ function iconOptions() {
   const out = [{ name: gettext('icon_none'), value: '' }]
   ICON_CHOICES.forEach((n) => out.push({ name: n, value: n }))
   return out
+}
+
+function fieldOptions(field) {
+  if (field === 'action') return ACTIONS
+  if (field === 'shape') return SHAPES
+  if (field === 'size') return SIZES
+  if (field === 'slot') return slotOptions()
+  if (field === 'icon') return iconOptions()
+  return PALETTE.map((p) => ({ name: p.name + '  ' + p.value, value: p.value }))
+}
+
+// Human-readable current value of an editor field (shown in its Button row).
+function fieldCurrent(edit, field) {
+  if (field === 'slot') {
+    const v = Number(edit.slot) || 0
+    return 'R' + (Math.floor(v / GRID_COLS) + 1) + 'C' + (v % GRID_COLS + 1)
+  }
+  const hit = fieldOptions(field).filter((o) => o.value === edit[field])[0]
+  return hit ? hit.name : edit[field] || '—'
+}
+
+// first free grid area for a NEW button: buttons occupy a row-anchored span
+// (xs=1 col, s=2 cols, l=full row); never stack a new button on an existing one
+function firstFreeSlot(buttons) {
+  const spanOf = (b) => (b.size === 'l' ? GRID_COLS : b.size === 'xs' ? 1 : 2)
+  const taken = new Array(GRID_COLS * GRID_ROWS).fill(false)
+  buttons.forEach((b) => {
+    const s = Number(b.slot) || 0
+    const span = Math.min(spanOf(b), GRID_COLS - (s % GRID_COLS))
+    for (let i = s; i < s + span; i++) taken[i] = true
+  })
+  for (let i = 0; i < taken.length; i++) {
+    const span = 2 // the new-button default size is 's'
+    if (i % GRID_COLS + span > GRID_COLS) continue
+    let free = true
+    for (let k = i; k < i + span; k++) if (taken[k]) free = false
+    if (free) return i
+  }
+  return 0
 }
 
 AppSettingsPage({
@@ -310,7 +350,13 @@ AppSettingsPage({
         domains.map((d) =>
           Button({
             label: domainLabel(d) + ' — ' + counts[d],
-            onClick: () => this.nav({ view: 'elist', domain: d }),
+            onClick: () => {
+              // domain goes into ha_config (proven channel), nav only switches view
+              const c = this.cfg()
+              c.__domain = d
+              this.saveConfig(c)
+              this.nav({ view: 'elist' })
+            },
           })
         )
       )
@@ -320,11 +366,12 @@ AppSettingsPage({
 
   eListView() {
     const ui = this.ui()
+    const domain = this.cfg().__domain || ui.domain
     const rows = [this.back({ view: 'epicker' })]
     const data = this.data()
-    const entities = data && ui.domain ? data.entities.filter((e) => e.d === ui.domain) : []
+    const entities = data && domain ? data.entities.filter((e) => e.d === domain) : []
     rows.push(
-      Text({ bold: true, style: { fontSize: '18px', color: '#2E7D32', margin: '10px 0 2px' } }, [domainLabel(ui.domain) + ': ' + entities.length]),
+      Text({ bold: true, style: { fontSize: '18px', color: '#2E7D32', margin: '10px 0 2px' } }, [domainLabel(domain) + ': ' + entities.length]),
       Section(
         {},
         entities.map((e) =>
@@ -474,9 +521,54 @@ AppSettingsPage({
     const c = this.cfg()
     const existing = bi >= 0 && c.screens[si] ? (c.screens[si].buttons || [])[bi] : null
     c.__draft = Object.assign({}, EDITOR_DEFAULTS, existing || {})
+    if (bi < 0 && c.screens[si]) {
+      // new buttons must not stack onto slot 0 — pick the first free grid area
+      c.__draft.slot = firstFreeSlot(c.screens[si].buttons || [])
+    }
     c.__editTarget = { screen: si, button: bi }
     this.saveConfig(c)
+    // seed the label field's storage key (the label TextInput is settingsKey-backed)
+    this.props.settingsStorage.setItem('ha_ed_label', c.__draft.label || '')
     this.nav({ view: 'button', screen: si, button: bi })
+  },
+
+  // All editor fields are Button rows opening this picker: on phone runtimes
+  // Select/TextInput initial `value` props render empty (docs say otherwise),
+  // while Button string labels always display.
+  openPicker(field) {
+    const c = this.cfg()
+    c.__pick = field
+    this.saveConfig(c)
+    this.nav({ view: 'picker' })
+  },
+
+  pickerView() {
+    const field = this.cfg().__pick
+    const rows = [this.back({ view: 'button' })]
+    if (!field) {
+      rows.push(Text({ style: { color: '#888' } }, [gettext('diag_wait')]))
+      return View({ style: { padding: '12px 16px' } }, rows)
+    }
+    const edit = this.editVal()
+    const titleKey = field === 'colorOn' ? 'color_on' : field === 'colorOff' ? 'color_off' : field
+    const raw = field === 'slot' ? String(edit.slot) : edit[field]
+    rows.push(
+      Section(
+        { title: gettext(titleKey) },
+        fieldOptions(field).map((o) =>
+          Button({
+            label: (String(o.value) === String(raw) ? '✓ ' : '') + o.name,
+            onClick: () => {
+              const patch = {}
+              patch[field] = field === 'slot' ? parseInt(o.value, 10) : o.value
+              this.setEdit(patch) // draft write only; navigation below is the single ha_ui write
+              this.nav({ view: 'button' })
+            },
+          })
+        )
+      )
+    )
+    return View({ style: { padding: '12px 16px' } }, rows)
   },
 
   editVal() {
@@ -501,6 +593,9 @@ AppSettingsPage({
     const c = this.cfg()
     const edit = c.__draft
     if (!edit || !edit.entity) return
+    // the label TextInput auto-persists to its settingsKey; that value is authoritative
+    const savedLabel = this.props.settingsStorage.getItem('ha_ed_label')
+    if (typeof savedLabel === 'string') edit.label = savedLabel
     // the editor target also travels inside config — never trust ha_ui here
     const t = c.__editTarget || { screen: ui.screen, button: ui.button }
     delete c.__draft
@@ -526,21 +621,6 @@ AppSettingsPage({
     const entityName = edit.entity
       ? (data ? data.entities : []).filter((e) => e.e === edit.entity)[0]
       : null
-    const toggleColors = [
-      Select({
-        label: gettext('color_on'),
-        options: PALETTE.map((p) => ({ name: p.name, value: p.value })),
-        value: edit.colorOn,
-        onChange: (v) => this.setEdit({ colorOn: v }),
-      }),
-      Select({
-        label: gettext('color_off'),
-        options: PALETTE.map((p) => ({ name: p.name, value: p.value })),
-        value: edit.colorOff,
-        onChange: (v) => this.setEdit({ colorOff: v }),
-      }),
-    ]
-
     rows.push(
       Section(
         { title: gettext('button_settings') },
@@ -551,40 +631,41 @@ AppSettingsPage({
           }),
           TextInput({
             label: gettext('button_text'),
-            value: edit.label,
+            // settingsKey-backed: storage-bound TextInputs are the ONLY input
+            // whose value the phone runtime displays (URL/token fields prove it)
+            settingsKey: 'ha_ed_label',
+            placeholder: '',
             onChange: (v) => this.setEdit({ label: v }),
           }),
-          Select({
-            label: gettext('action'),
-            options: ACTIONS,
-            value: edit.action,
-            onChange: (v) => this.setEdit({ action: v }),
+          Button({
+            label: gettext('action') + ': ' + fieldCurrent(edit, 'action'),
+            onClick: () => this.openPicker('action'),
           }),
-          Select({
-            label: gettext('shape'),
-            options: SHAPES,
-            value: edit.shape,
-            onChange: (v) => this.setEdit({ shape: v }),
+          Button({
+            label: gettext('shape') + ': ' + fieldCurrent(edit, 'shape'),
+            onClick: () => this.openPicker('shape'),
           }),
-          Select({
-            label: gettext('size'),
-            options: SIZES,
-            value: edit.size,
-            onChange: (v) => this.setEdit({ size: v }),
+          Button({
+            label: gettext('size') + ': ' + fieldCurrent(edit, 'size'),
+            onClick: () => this.openPicker('size'),
           }),
-          Select({
-            label: gettext('slot'),
-            options: slotOptions(),
-            value: String(edit.slot),
-            onChange: (v) => this.setEdit({ slot: parseInt(v, 10) }),
+          Button({
+            label: gettext('slot') + ': ' + fieldCurrent(edit, 'slot'),
+            onClick: () => this.openPicker('slot'),
           }),
-          Select({
-            label: gettext('icon'),
-            options: iconOptions(),
-            value: edit.icon || '',
-            onChange: (v) => this.setEdit({ icon: v }),
+          Button({
+            label: gettext('icon') + ': ' + fieldCurrent(edit, 'icon'),
+            onClick: () => this.openPicker('icon'),
           }),
-        ].concat(toggleColors)
+          Button({
+            label: gettext('color_on') + ': ' + edit.colorOn,
+            onClick: () => this.openPicker('colorOn'),
+          }),
+          Button({
+            label: gettext('color_off') + ': ' + edit.colorOff,
+            onClick: () => this.openPicker('colorOff'),
+          }),
+        ]
       ),
       View(
         { style: { display: 'flex', flexDirection: 'row', padding: '8px 0' } },
@@ -631,6 +712,7 @@ AppSettingsPage({
     if (view === 'area') return this.areaView()
     if (view === 'screens') return this.screensView()
     if (view === 'button') return this.buttonView()
+    if (view === 'picker') return this.pickerView()
     if (view === 'epicker') return this.ePickerView()
     if (view === 'elist') return this.eListView()
     if (view === 'diag') return this.diagView()
