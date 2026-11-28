@@ -470,28 +470,35 @@ Page(
       })
       if (icon) {
         const hasLabel = !!btn.label
+        // On circle buttons (a ~100x100 square) the wide-cell icon/label stack
+        // sits too high and labels spill over the round edge — use a compact
+        // vertically-centered stack instead. align_v CENTER_V keeps the glyph
+        // truly centered inside its band on all firmware builds.
+        const circle = btn.shape === 'circle'
         const iconText = container.createWidget(widget.TEXT, {
           x: px(g.x),
-          y: px(g.y + (hasLabel ? 4 : 22)),
+          y: px(circle ? (hasLabel ? g.y + 8 : g.y) : g.y + (hasLabel ? 4 : 22)),
           w: px(g.w),
-          h: px(hasLabel ? 52 : 56),
+          h: px(circle ? (hasLabel ? 44 : g.h) : hasLabel ? 52 : 56),
           text: icon,
           text_size: px(hasLabel ? 40 : 44),
           color: COLOR_TEXT,
           align_h: align.CENTER_H,
+          align_v: align.CENTER_V,
           font: ICON_FONT,
         })
         iconText.addEventListener(event.CLICK_DOWN, fireOnce)
         if (hasLabel) {
           const labelText = container.createWidget(widget.TEXT, {
-            x: px(g.x + 4),
-            y: px(g.y + 60),
-            w: px(g.w - 8),
-            h: px(32),
+            x: px(circle ? g.x + 10 : g.x + 4),
+            y: px(circle ? g.y + 56 : g.y + 60),
+            w: px(circle ? g.w - 20 : g.w - 8),
+            h: px(circle ? 28 : 32),
             text: btn.label,
-            text_size: px(20),
+            text_size: px(circle ? 18 : 20),
             color: COLOR_TEXT,
             align_h: align.CENTER_H,
+            align_v: align.CENTER_V,
             text_style: text_style.ELLIPSIS,
           })
           labelText.addEventListener(event.CLICK_DOWN, fireOnce)
