@@ -14,6 +14,16 @@ import {
 import { ICON_CHOICES } from '../utils/icons'
 
 /*
+ * Module-level mirror of the last-written `ha_ui`. The framework's props
+ * snapshot (props.settingsStorage.getItem) is STALE until the next re-render,
+ * so a second nav() within one event handler would merge over the pre-write
+ * snapshot and silently drop keys written moments ago (e.g. the editor draft
+ * written by setEdit, clobbered by the navigation that follows). uiCache keeps
+ * the truth in memory — the module persists across view rebuilds.
+ */
+let uiCache = null
+
+/*
  * Settings App (phone side, runs inside the Zepp App).
  * Fully dynamic: navigation lives in settingsStorage (`ha_ui`), so every
  * interaction re-renders `build` (the Settings App is reactive to storage).
@@ -78,12 +88,13 @@ AppSettingsPage({
   },
 
   ui() {
-    return readJson(this.props, STORAGE_KEYS.HA_UI, { view: 'root' })
+    return uiCache || readJson(this.props, STORAGE_KEYS.HA_UI, { view: 'root' })
   },
 
   nav(patch) {
     const next = Object.assign({}, this.ui(), patch)
     next._r = Date.now() // force a storage change even when the payload is identical
+    uiCache = next
     this.props.settingsStorage.setItem(STORAGE_KEYS.HA_UI, JSON.stringify(next))
   },
 
@@ -302,11 +313,12 @@ AppSettingsPage({
           Button({
             label: e.n,
             onClick: () => {
-              const patch = { entity: e.e }
+              // SINGLE nav: two storage writes in one tick would race the stale
+              // props snapshot and drop the draft (see uiCache note at top).
               const cur = this.editVal()
-              if (!cur.label) patch.label = e.n
-              this.setEdit(patch)
-              this.nav({ view: 'button', domain: null })
+              const edit = Object.assign({}, cur, { entity: e.e })
+              if (!cur.label) edit.label = e.n
+              this.nav({ edit, view: 'button', domain: null })
             },
           })
         )
