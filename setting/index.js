@@ -23,6 +23,23 @@ import { ICON_CHOICES } from '../utils/icons'
  */
 let uiCache = null
 
+// Editor draft defaults; the in-progress button draft lives in ha_config
+// under '__draft' (NOT in ha_ui): the settings framework reliably delivers
+// config writes back to the next render (the button list itself renders from
+// cfg()), while ha_ui nav payload (edit/screen/button) was observed to NOT
+// arrive on the phone — the editor kept opening with empty fields.
+const EDITOR_DEFAULTS = {
+  entity: '',
+  label: '',
+  action: 'auto',
+  colorOn: '#43A047',
+  colorOff: '#546E7A',
+  shape: 'round',
+  size: 's',
+  slot: 0,
+  icon: '',
+}
+
 /*
  * Settings App (phone side, runs inside the Zepp App).
  * Fully dynamic: navigation lives in settingsStorage (`ha_ui`), so every
@@ -307,18 +324,21 @@ AppSettingsPage({
     const data = this.data()
     const entities = data && ui.domain ? data.entities.filter((e) => e.d === ui.domain) : []
     rows.push(
+      Text({ bold: true, style: { fontSize: '18px', color: '#2E7D32', margin: '10px 0 2px' } }, [domainLabel(ui.domain) + ': ' + entities.length]),
       Section(
-        { title: domainLabel(ui.domain) + ': ' + entities.length },
+        {},
         entities.map((e) =>
           Button({
             label: e.n,
             onClick: () => {
-              // SINGLE nav: two storage writes in one tick would race the stale
-              // props snapshot and drop the draft (see uiCache note at top).
+              // draft lives in ha_config; nav only switches the view
               const cur = this.editVal()
-              const edit = Object.assign({}, cur, { entity: e.e })
-              if (!cur.label) edit.label = e.n
-              this.nav({ edit, view: 'button', domain: null })
+              const c = this.cfg()
+              const d = Object.assign({}, cur, { entity: e.e })
+              if (!cur.label) d.label = e.n
+              c.__draft = d
+              this.saveConfig(c)
+              this.nav({ view: 'button', domain: null })
             },
           })
         )
@@ -367,7 +387,10 @@ AppSettingsPage({
               })
             )
           })
-        rows.push(Section({ title: domainLabel(domain) + ': ' + entities[domain].length }, items))
+        rows.push(
+          Text({ bold: true, style: { fontSize: '18px', color: '#2E7D32', margin: '10px 0 2px' } }, [domainLabel(domain) + ': ' + entities[domain].length]),
+          Section({}, items)
+        )
       })
     if (rows.length <= 2) rows.push(Text({ style: { color: '#888' } }, [gettext('no_entities')]))
     return View({ style: { padding: '12px 16px' } }, rows)
@@ -389,7 +412,7 @@ AppSettingsPage({
             ]),
             Button({
               label: gettext('edit'),
-              onClick: () => this.nav({ view: 'button', screen: si, button: bi, edit: null }),
+              onClick: () => this.openEditor(si, bi),
             }),
             Button({
               label: gettext('delete'),
@@ -407,7 +430,7 @@ AppSettingsPage({
         Button({
           label: gettext('add_button'),
           color: 'primary',
-          onClick: () => this.nav({ view: 'button', screen: si, button: -1, edit: null }),
+          onClick: () => this.openEditor(si, -1),
         })
       )
       rows.push(
@@ -442,44 +465,53 @@ AppSettingsPage({
 
   /* --------------------------- button editor --------------------------- */
 
-  // The Settings App re-renders on every settingsStorage change and the JS
-  // state is NOT guaranteed to survive a rebuild — so the in-progress button
-  // draft lives in the ha_ui storage key, not in memory.
+  // The in-progress button draft lives in ha_config under '__draft'. The
+  // settings framework reliably delivers config writes back to the next
+  // render (the button list itself renders from cfg()), while ha_ui nav
+  // payload (edit/screen/button) was observed to NOT arrive on the phone —
+  // the editor kept opening with empty fields.
+  openEditor(si, bi) {
+    const c = this.cfg()
+    const existing = bi >= 0 && c.screens[si] ? (c.screens[si].buttons || [])[bi] : null
+    c.__draft = Object.assign({}, EDITOR_DEFAULTS, existing || {})
+    c.__editTarget = { screen: si, button: bi }
+    this.saveConfig(c)
+    this.nav({ view: 'button', screen: si, button: bi })
+  },
+
   editVal() {
+    const draft = this.cfg().__draft
+    if (draft) return Object.assign({}, EDITOR_DEFAULTS, draft)
+    // last-resort fallback: read the configured button directly
     const ui = this.ui()
-    if (ui.edit) return ui.edit
     const config = this.cfg()
     const screen = ui.screen != null ? config.screens[ui.screen] : null
     const existing = screen && ui.button >= 0 ? (screen.buttons || [])[ui.button] : null
-    return Object.assign(
-      {
-        entity: '',
-        label: '',
-        action: 'auto',
-        colorOn: '#43A047',
-        colorOff: '#546E7A',
-        shape: 'round',
-        size: 's',
-        slot: 0,
-        icon: '',
-      },
-      existing || {}
-    )
+    return Object.assign({}, EDITOR_DEFAULTS, existing || {})
   },
 
   setEdit(patch) {
-    const edit = Object.assign({}, this.editVal(), patch)
-    this.nav({ edit }) // storage write keeps the draft across rebuilds
+    const c = this.cfg()
+    c.__draft = Object.assign(this.editVal(), patch)
+    this.saveConfig(c) // the config write triggers the rebuild
   },
 
   saveEdit() {
     const ui = this.ui()
-    const edit = this.editVal()
-    if (!edit.entity) return
     const c = this.cfg()
-    const screen = c.screens[ui.screen]
+    const edit = c.__draft
+    if (!edit || !edit.entity) return
+    // the editor target also travels inside config — never trust ha_ui here
+    const t = c.__editTarget || { screen: ui.screen, button: ui.button }
+    delete c.__draft
+    delete c.__editTarget
+    const screen = c.screens[t.screen]
+    if (!screen) {
+      this.nav({ view: 'screens', screen: null, button: null, edit: null })
+      return
+    }
     if (!screen.buttons) screen.buttons = []
-    if (ui.button >= 0) screen.buttons[ui.button] = edit
+    if (t.button >= 0) screen.buttons[t.button] = edit
     else screen.buttons.push(edit)
     this.saveConfig(c)
     this.nav({ view: 'screens', screen: null, button: null, edit: null })
@@ -573,7 +605,10 @@ AppSettingsPage({
                     color: 'secondary',
                     onClick: () => {
                       const c = this.cfg()
-                      c.screens[ui.screen].buttons.splice(ui.button, 1)
+                      const t = c.__editTarget || { screen: ui.screen, button: ui.button }
+                      delete c.__draft
+                      delete c.__editTarget
+                      if (c.screens[t.screen] && c.screens[t.screen].buttons) c.screens[t.screen].buttons.splice(t.button, 1)
                       this.saveConfig(c)
                       this.nav({ view: 'screens', button: null, edit: null })
                     },
