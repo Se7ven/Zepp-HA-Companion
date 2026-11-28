@@ -304,7 +304,7 @@ AppSettingsPage({
               })
             )
           })
-        rows.push(Section({ title: domainLabel(domain) }, items))
+        rows.push(Section({ title: domainLabel(domain) + ': ' + entities[domain].length }, items))
       })
     if (rows.length <= 2) rows.push(Text({ style: { color: '#888' } }, [gettext('no_entities')]))
     return View({ style: { padding: '12px 16px' } }, rows)

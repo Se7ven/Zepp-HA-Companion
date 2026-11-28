@@ -258,17 +258,20 @@ Page(
     })
 
     let y = 72
+    let firstGroup = true
     Object.keys(groups)
       .sort()
       .forEach((domain) => {
+        if (!firstGroup) y += 12 // visual separation between type groups
+        firstGroup = false
         this.add(
           createWidget(widget.TEXT, {
             x: px(MARGIN),
             y: px(y),
             w: px(PAGE_W - MARGIN * 2),
             h: px(HEADER_H),
-            text: domainLabel(domain),
-            text_size: px(24),
+            text: domainLabel(domain) + ': ' + groups[domain].length,
+            text_size: px(26),
             color: 0x80cbc4,
             align_v: align.BOTTOM,
           })
